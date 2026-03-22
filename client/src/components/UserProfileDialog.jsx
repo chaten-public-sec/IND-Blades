@@ -15,6 +15,14 @@ function formatDate(v) {
   return Number.isNaN(d.getTime()) ? 'N/A' : d.toLocaleString();
 }
 
+function getTimeLeft(expiresAt) {
+  const diff = new Date(expiresAt) - new Date();
+  if (diff <= 0) return 'Expired';
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  return `${days}d ${hours}h`;
+}
+
 export default function UserProfileDialog({ user, roles = [], roster = [], onClose }) {
   if (!user) return null;
 
@@ -29,9 +37,11 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
   });
   const rank = ranked.findIndex((u) => u.id === user.id) + 1;
 
+  const strikes = user.strikes || [];
+
   return (
     <Dialog open={Boolean(user)} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="w-[min(96vw,520px)]">
+      <DialogContent className="w-[min(96vw,520px)] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Member Profile</DialogTitle>
         </DialogHeader>
@@ -72,6 +82,33 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Rank</p>
               <p className="mt-2 text-2xl font-bold text-gradient">#{rank || '—'}</p>
             </div>
+          </div>
+
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Strikes</p>
+              <Badge variant={user.strike_count > 0 ? "destructive" : "success"}>
+                {user.strike_count || 0} Strikes
+              </Badge>
+            </div>
+            
+            {strikes.length > 0 ? (
+              <div className="space-y-3">
+                {strikes.map((strike, i) => (
+                  <div key={i} className="surface-soft rounded-xl p-3 text-sm">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-bold text-red-400">{strike.reason}</span>
+                      <span className="text-xs text-[var(--text-muted)]">{getTimeLeft(strike.expires_at)} left</span>
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)]">Given on {formatDate(strike.timestamp)}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="surface-soft rounded-xl p-4 text-center text-sm text-[var(--text-muted)]">
+                No active strikes. This user is in good standing!
+              </div>
+            )}
           </div>
         </DialogBody>
       </DialogContent>

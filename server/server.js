@@ -203,8 +203,54 @@ function normalizeAutoRoleConfig(value) {
       ? input.bindings
           .filter((b) => b && typeof b === 'object' && b.role_a && b.role_b)
           .map((b) => ({ role_a: String(b.role_a), role_b: String(b.role_b) }))
-      : []
+      : [],
+    strike_mapping: input.strike_mapping && typeof input.strike_mapping === 'object' ? input.strike_mapping : {}
   };
+}
+
+function normalizeStrikeData(value) {
+  const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return {
+    user_id: parseSnowflake(input.user_id),
+    strikes: Array.isArray(input.strikes)
+      ? input.strikes.map((s) => ({
+          reason: String(s.reason || 'Missed Event'),
+          timestamp: s.timestamp || new Date().toISOString(),
+          expires_at: s.expires_at || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        }))
+      : [],
+    strike_count: Number(input.strike_count || 0)
+  };
+}
+
+function getStrikeConfig() {
+  const store = readStore();
+  const config = store.__strikes_config__ || {};
+  return {
+    expiry_days: Number(config.expiry_days || 7)
+  };
+}
+
+function setStrikeConfig(partial) {
+  const store = readStore();
+  const current = getStrikeConfig();
+  store.__strikes_config__ = { ...current, ...partial };
+  writeStore(store);
+  return store.__strikes_config__;
+}
+
+function getUserStrikes(userId) {
+  const store = readStore();
+  const allStrikes = store.__strikes__ || {};
+  return normalizeStrikeData(allStrikes[userId] || { user_id: userId });
+}
+
+function setUserStrikes(userId, strikeData) {
+  const store = readStore();
+  if (!store.__strikes__) store.__strikes__ = {};
+  store.__strikes__[userId] = normalizeStrikeData(strikeData);
+  writeStore(store);
+  return store.__strikes__[userId];
 }
 
 function normalizeNotificationConfig(value) {
@@ -343,8 +389,8 @@ function normalizeEvent(id, value) {
     mention_role_id: parseSnowflake(item.mention_role_id),
     channel_id: parseSnowflake(item.channel_id),
     creator_id: parseSnowflake(item.creator_id),
-    going: Array.isArray(item.going) ? item.going : [],
-    not_sure: Array.isArray(item.not_sure) ? item.not_sure : [],
+    attending: Array.isArray(item.attending) ? item.attending : (Array.isArray(item.going) ? item.going : []),
+    not_attending: Array.isArray(item.not_attending) ? item.not_attending : (Array.isArray(item.not_sure) ? item.not_sure : []),
     vote_message_id: parseSnowflake(item.vote_message_id),
     vote_message_map:
       item.vote_message_map && typeof item.vote_message_map === 'object' && !Array.isArray(item.vote_message_map)
@@ -475,8 +521,8 @@ function buildEventRecord(body, existingEvent) {
     mention_role_id: mentionRoleId,
     channel_id: channelId,
     creator_id: creatorId,
-    going: current?.going || [],
-    not_sure: current?.not_sure || [],
+    attending: current?.attending || [],
+    not_attending: current?.not_attending || [],
     vote_message_id: current?.vote_message_id || null,
     vote_message_map: current?.vote_message_map || {},
     last_vote_date: current?.last_vote_date || null,
@@ -628,9 +674,14 @@ function buildUsersFromActivity(activity) {
 
 function buildUserResponse(members, activity) {
   const activityUsers = activity.users || {};
+  const store = readStore();
+  const allStrikes = store.__strikes__ || {};
+
   const rows = members.map((member) => {
     const user = member.user || {};
     const stats = activityUsers[user.id] || {};
+    const strikeData = normalizeStrikeData(allStrikes[user.id] || { user_id: user.id });
+    
     return {
       id: user.id,
       name: user.global_name || user.username || `User ${String(user.id || '').slice(-4)}`,
@@ -638,7 +689,9 @@ function buildUserResponse(members, activity) {
       roles: Array.isArray(member.roles) ? member.roles.map(String) : [],
       joined_at: member.joined_at || null,
       voice_time: Number(stats.voice_time || 0),
-      messages: Number(stats.messages || 0)
+      messages: Number(stats.messages || 0),
+      strikes: strikeData.strikes,
+      strike_count: strikeData.strike_count
     };
   });
 
@@ -648,6 +701,7 @@ function buildUserResponse(members, activity) {
     if (knownIds.has(userId)) {
       continue;
     }
+    const strikeData = normalizeStrikeData(allStrikes[userId] || { user_id: userId });
     rows.push({
       id: userId,
       name: `User ${userId.slice(-4)}`,
@@ -655,7 +709,9 @@ function buildUserResponse(members, activity) {
       roles: [],
       joined_at: null,
       voice_time: Number(stats.voice_time || 0),
-      messages: Number(stats.messages || 0)
+      messages: Number(stats.messages || 0),
+      strikes: strikeData.strikes,
+      strike_count: strikeData.strike_count
     });
   }
 
@@ -764,23 +820,43 @@ app.use(
   })
 );
 
+function emitSystemUpdate(type, payload = {}) {
+  io.emit('systemUpdate', { type, payload });
+  // Legacy events for backward compatibility
+  if (type.startsWith('EVENT_')) io.emit('eventsUpdated');
+  if (type === 'WELCOME_UPDATED') io.emit('welcomeUpdated');
+  if (type === 'USER_UPDATED') io.emit('statsUpdated');
+  if (type === 'LOG_UPDATED') io.emit('logsUpdated');
+}
+
 function emitDataRefresh() {
   invalidateCatalogCaches();
-  io.emit('eventsUpdated');
-  io.emit('welcomeUpdated');
-  io.emit('statsUpdated');
-  io.emit('logSettingsUpdated');
+  emitSystemUpdate('EVENT_UPDATED');
 }
 
 fs.watchFile(REMINDERS_PATH, { interval: 1000 }, (current, previous) => {
   if (current.mtimeMs !== previous.mtimeMs) {
-    emitDataRefresh();
+    invalidateCatalogCaches();
+    emitSystemUpdate('EVENT_UPDATED');
   }
 });
 
 fs.watchFile(LOGS_PATH, { interval: 1000 }, (current, previous) => {
   if (current.mtimeMs !== previous.mtimeMs) {
-    io.emit('logsUpdated');
+    emitSystemUpdate('LOG_UPDATED');
+  }
+});
+
+fs.watchFile(COMMANDS_PATH, { interval: 1000 }, (current, previous) => {
+  if (current.mtimeMs !== previous.mtimeMs) {
+    const commands = getCommands();
+    const last = commands[commands.length - 1];
+    if (last && last.status === 'done') {
+      if (last.type === 'strike_added' || last.type === 'strike_removed') {
+        invalidateCatalogCaches();
+        emitSystemUpdate('USER_UPDATED');
+      }
+    }
   }
 });
 
@@ -854,11 +930,76 @@ app.get('/api/dashboard/bootstrap', async (req, res) => {
     activity: getActivityStats(store),
     autorole: getAutoRoleConfig(store),
     notifications: getNotificationConfig(store),
+    strike_config: getStrikeConfig(),
     logs: getLogs(),
     users,
     channels,
     roles
   });
+});
+
+app.get('/api/strikes/config', (req, res) => {
+  res.json(getStrikeConfig());
+});
+
+app.post('/api/strikes/config', (req, res) => {
+  const config = setStrikeConfig(req.body || {});
+  emitSystemUpdate('STRIKE_CONFIG_UPDATED', config);
+  appendLog('Updated strike configuration.', 'info', 'strikes');
+  res.json({ success: true, config });
+});
+
+app.post('/api/strikes/add', async (req, res) => {
+  const { user_id, reason } = req.body || {};
+  if (!user_id) return res.status(400).json({ error: 'User ID required' });
+
+  const config = getStrikeConfig();
+  const strikeData = getUserStrikes(user_id);
+  
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + config.expiry_days);
+
+  strikeData.strikes.push({
+    reason: reason || 'Manual Strike',
+    timestamp: new Date().toISOString(),
+    expires_at: expiresAt.toISOString()
+  });
+  strikeData.strike_count = strikeData.strikes.length;
+  
+  setUserStrikes(user_id, strikeData);
+  
+  enqueueCommand('strike_added', {
+    user_id,
+    reason: reason || 'Manual Strike',
+    strike_count: strikeData.strike_count
+  });
+
+  emitSystemUpdate('STRIKE_ADDED', { user_id, strike_count: strikeData.strike_count });
+  appendLog(`Added strike to user ${user_id}.`, 'warning', 'strikes', { user_id });
+  res.json({ success: true, strikeData });
+});
+
+app.post('/api/strikes/remove', async (req, res) => {
+  const { user_id, index } = req.body || {};
+  if (!user_id || index === undefined) return res.status(400).json({ error: 'User ID and index required' });
+
+  const strikeData = getUserStrikes(user_id);
+  if (strikeData.strikes[index]) {
+    strikeData.strikes.splice(index, 1);
+    strikeData.strike_count = strikeData.strikes.length;
+    setUserStrikes(user_id, strikeData);
+    
+    enqueueCommand('strike_removed', {
+      user_id,
+      strike_count: strikeData.strike_count
+    });
+
+    emitSystemUpdate('STRIKE_REMOVED', { user_id, strike_count: strikeData.strike_count });
+    appendLog(`Removed strike from user ${user_id}.`, 'info', 'strikes', { user_id });
+    res.json({ success: true, strikeData });
+  } else {
+    res.status(404).json({ error: 'Strike not found' });
+  }
 });
 
 app.get('/api/events', (req, res) => {

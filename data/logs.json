@@ -1,5 +1,77 @@
 [
   {
+    "id": "9df49829-6497-4a0c-b520-115a76b4af80",
+    "message": "Enabled event \"Foundary\".",
+    "level": "info",
+    "source": "events",
+    "meta": {
+      "id": "02442d97-e2d3-431b-a43a-070e15af4319"
+    },
+    "timestamp": "2026-03-22T15:50:31.035Z"
+  },
+  {
+    "id": "77f95385-2a82-4f3d-b796-568a946dcdef",
+    "message": "Updated event \"Harbor\".",
+    "level": "info",
+    "source": "events",
+    "meta": {
+      "id": "03b57a0c-9f17-4d3c-9f19-7f8c882e50bc"
+    },
+    "timestamp": "2026-03-22T15:50:25.892Z"
+  },
+  {
+    "id": "86e9cd76-5f53-4dbd-9167-ffedd51d01a5",
+    "message": "Disabled event \"Foundary\".",
+    "level": "info",
+    "source": "events",
+    "meta": {
+      "id": "02442d97-e2d3-431b-a43a-070e15af4319"
+    },
+    "timestamp": "2026-03-22T15:50:02.573Z"
+  },
+  {
+    "id": "a97e54cf-0dd9-41db-9e57-5ffd6632f926",
+    "message": "Enabled event \"Foundary\".",
+    "level": "info",
+    "source": "events",
+    "meta": {
+      "id": "02442d97-e2d3-431b-a43a-070e15af4319"
+    },
+    "timestamp": "2026-03-22T15:49:58.285Z"
+  },
+  {
+    "id": "1f7beccd-7bbb-4c05-95f4-041e2da26a0d",
+    "message": "Updated strike configuration.",
+    "level": "info",
+    "source": "strikes",
+    "meta": {},
+    "timestamp": "2026-03-22T15:49:19.781Z"
+  },
+  {
+    "id": "576f614a-b777-40d6-a918-bc783ee265cb",
+    "message": "Updated auto role settings.",
+    "level": "info",
+    "source": "autorole",
+    "meta": {},
+    "timestamp": "2026-03-22T15:49:19.484Z"
+  },
+  {
+    "id": "e771832b-55a6-4942-b06f-23ed292e5316",
+    "message": "Dashboard login successful.",
+    "level": "info",
+    "source": "auth",
+    "meta": {},
+    "timestamp": "2026-03-22T15:48:52.288Z"
+  },
+  {
+    "id": "dc3bdde9-5087-4f00-9638-d172f622d559",
+    "message": "API server listening on port 3001.",
+    "level": "info",
+    "source": "server",
+    "meta": {},
+    "timestamp": "2026-03-22T15:48:16.790Z"
+  },
+  {
     "id": "100089b5-bdb4-4e29-aaf4-ce9f9a52ebc1",
     "message": "Enabled event \"Harbor\".",
     "level": "info",

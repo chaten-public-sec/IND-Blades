@@ -3,9 +3,9 @@ from datetime import timedelta
 
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
-from utils.storage import get_log_settings
+from utils.storage import get_log_settings, load_data, save_data
 
 DEFAULT_MODERATION_LOGS_CHANNEL_ID = int(os.getenv("MODERATION_LOGS_CHANNEL_ID", "0") or 0)
 
@@ -21,14 +21,25 @@ class Moderation(commands.Cog):
             return None
         return guild.get_channel(int(channel_id))
 
-    def mod_log_embed(self, action, moderator, target, reason=None, duration=None):
+    def mod_log_embed(self, action, moderator, target, reason=None, duration=None, strikes=None):
         embed = discord.Embed(title="Moderation Action", color=0xED4245)
         embed.add_field(name="Action", value=action, inline=False)
-        embed.add_field(name="Moderator", value=moderator.mention, inline=True)
-        embed.add_field(name="Target", value=str(target), inline=True)
+        embed.add_field(name="Moderator", value=moderator.mention if hasattr(moderator, 'mention') else str(moderator), inline=True)
+        embed.add_field(name="Target", value=target.mention if hasattr(target, 'mention') else str(target), inline=True)
         if duration:
             embed.add_field(name="Duration", value=duration, inline=False)
+        if strikes is not None:
+            embed.add_field(name="Strikes", value=str(strikes), inline=True)
         embed.add_field(name="Reason", value=reason or "No reason provided", inline=False)
+        embed.timestamp = discord.utils.utcnow()
+        return embed
+
+    def strike_embed(self, user, reason, strikes):
+        embed = discord.Embed(title="⚠️ Strike Added", color=0xFEE75C)
+        embed.add_field(name="User", value=user.mention, inline=True)
+        embed.add_field(name="Reason", value=reason, inline=True)
+        embed.add_field(name="Total Strikes", value=str(strikes), inline=True)
+        embed.set_footer(text="IND Blades • Smart System")
         embed.timestamp = discord.utils.utcnow()
         return embed
 
@@ -36,6 +47,185 @@ class Moderation(commands.Cog):
         channel = self.resolve_log_channel(guild)
         if channel:
             await channel.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_check_event_attendance(self, guild, reminder):
+        if not guild: return
+        
+        attending = set(reminder.get("attending", []))
+        
+        # Determine who should have attended
+        target_type = reminder.get("target_type")
+        target_id = reminder.get("target_id")
+        
+        eligible_users = []
+        if target_type == "user":
+            eligible_users = [target_id]
+        elif target_type == "role":
+            role = guild.get_role(int(target_id))
+            if role:
+                eligible_users = [str(m.id) for m in role.members if not m.bot]
+        elif target_type == "channel":
+            # For channel events, we might use a default role like FAMILY_ROLE_ID
+            from cogs.reminders import FAMILY_ROLE_ID
+            role = guild.get_role(FAMILY_ROLE_ID)
+            if role:
+                eligible_users = [str(m.id) for m in role.members if not m.bot]
+
+        missed_users = [u_id for u_id in eligible_users if u_id not in attending]
+        
+        if not missed_users: return
+
+        data = load_data()
+        config = data.get("__strikes_config__", {"expiry_days": 7})
+        expiry = config.get("expiry_days", 7)
+        
+        if "__strikes__" not in data: data["__strikes__"] = {}
+        
+        for user_id in missed_users:
+            member = guild.get_member(int(user_id))
+            if not member: continue
+            
+            if user_id not in data["__strikes__"]:
+                data["__strikes__"][user_id] = {"user_id": user_id, "strikes": [], "strike_count": 0}
+            
+            reason = f"Missed Event: {reminder.get('desc')}"
+            strike_entry = {
+                "reason": reason,
+                "timestamp": discord.utils.utcnow().isoformat(),
+                "expires_at": (discord.utils.utcnow() + timedelta(days=expiry)).isoformat()
+            }
+            data["__strikes__"][user_id]["strikes"].append(strike_entry)
+            data["__strikes__"][user_id]["strike_count"] = len(data["__strikes__"][user_id]["strikes"])
+            count = data["__strikes__"][user_id]["strike_count"]
+            
+            # Send notification
+            try:
+                embed = self.strike_embed(member, reason, count)
+                await self.send_mod_log(guild, self.mod_log_embed("Auto Strike", "System", member, reason, strikes=count))
+                # Also try to DM or post in event channel? 
+                # Let's post in event channel if it exists
+                from cogs.reminders import REMINDER_CHANNEL_ID
+                channel_id = reminder.get("channel_id") or REMINDER_CHANNEL_ID
+                channel = guild.get_channel(int(channel_id))
+                if channel:
+                    await channel.send(embed=embed)
+            except: pass
+            
+            self.bot.dispatch("strike_updated", guild, member, count, "added")
+
+        save_data(data)
+
+    @tasks.loop(hours=1)
+    async def strike_expiry_check(self):
+        data = load_data()
+        if "__strikes__" not in data: return
+        
+        changed = False
+        now = discord.utils.utcnow()
+        
+        for user_id, user_data in data["__strikes__"].items():
+            original_count = len(user_data["strikes"])
+            user_data["strikes"] = [s for s in user_data["strikes"] if discord.utils.parse_datetime(s["expires_at"]) > now]
+            
+            if len(user_data["strikes"]) != original_count:
+                user_data["strike_count"] = len(user_data["strikes"])
+                changed = True
+                # Dispatch update for role sync
+                guild = self.bot.get_guild(int(os.getenv("GUILD_ID")))
+                if guild:
+                    member = guild.get_member(int(user_id))
+                    if member:
+                        self.bot.dispatch("strike_updated", guild, member, user_data["strike_count"], "expired")
+
+        if changed:
+            save_data(data)
+
+    async def cog_load(self):
+        self.strike_expiry_check.start()
+
+    async def cog_unload(self):
+        self.strike_expiry_check.cancel()
+
+    @app_commands.command(name="strike", description="Manage strikes")
+    @app_commands.describe(
+        action="Choose action: add, remove, config",
+        user="User to manage strikes for",
+        reason="Reason for the strike",
+        expiry_days="Days until strike expires (config only)"
+    )
+    @app_commands.choices(action=[
+        app_commands.Choice(name="Add Strike", value="add"),
+        app_commands.Choice(name="Remove Latest", value="remove"),
+        app_commands.Choice(name="Set Expiry", value="config")
+    ])
+    async def strike(
+        self, 
+        interaction: discord.Interaction, 
+        action: str, 
+        user: discord.Member = None, 
+        reason: str = "No reason provided",
+        expiry_days: int = None
+    ):
+        if not await self.permission_check(interaction, "moderate_members"):
+            return
+
+        data = load_data()
+        
+        if action == "config":
+            if expiry_days is None:
+                await interaction.response.send_message("Please provide expiry days.", ephemeral=True)
+                return
+            
+            if "__strikes_config__" not in data:
+                data["__strikes_config__"] = {}
+            data["__strikes_config__"]["expiry_days"] = expiry_days
+            save_data(data)
+            await interaction.response.send_message(f"Strike expiry set to {expiry_days} days.")
+            return
+
+        if not user:
+            await interaction.response.send_message("User is required for this action.", ephemeral=True)
+            return
+
+        if action == "add":
+            config = data.get("__strikes_config__", {"expiry_days": 7})
+            expiry = config.get("expiry_days", 7)
+            
+            if "__strikes__" not in data: data["__strikes__"] = {}
+            user_id = str(user.id)
+            if user_id not in data["__strikes__"]:
+                data["__strikes__"][user_id] = {"user_id": user_id, "strikes": [], "strike_count": 0}
+            
+            strike_entry = {
+                "reason": reason,
+                "timestamp": discord.utils.utcnow().isoformat(),
+                "expires_at": (discord.utils.utcnow() + timedelta(days=expiry)).isoformat()
+            }
+            data["__strikes__"][user_id]["strikes"].append(strike_entry)
+            data["__strikes__"][user_id]["strike_count"] = len(data["__strikes__"][user_id]["strikes"])
+            count = data["__strikes__"][user_id]["strike_count"]
+            save_data(data)
+            
+            embed = self.strike_embed(user, reason, count)
+            await interaction.response.send_message(embed=embed)
+            await self.send_mod_log(interaction.guild, self.mod_log_embed("Strike Added", interaction.user, user, reason, strikes=count))
+            self.bot.dispatch("strike_updated", interaction.guild, user, count, "added")
+
+        elif action == "remove":
+            user_id = str(user.id)
+            if "__strikes__" not in data or user_id not in data["__strikes__"] or not data["__strikes__"][user_id]["strikes"]:
+                await interaction.response.send_message("This user has no strikes.", ephemeral=True)
+                return
+            
+            removed = data["__strikes__"][user_id]["strikes"].pop()
+            data["__strikes__"][user_id]["strike_count"] = len(data["__strikes__"][user_id]["strikes"])
+            count = data["__strikes__"][user_id]["strike_count"]
+            save_data(data)
+            
+            await interaction.response.send_message(f"Removed latest strike from {user.mention}. Total strikes: {count}")
+            await self.send_mod_log(interaction.guild, self.mod_log_embed("Strike Removed", interaction.user, user, f"Removed: {removed['reason']}", strikes=count))
+            self.bot.dispatch("strike_updated", interaction.guild, user, count, "removed")
 
     async def permission_check(self, interaction: discord.Interaction, perm: str):
         if getattr(interaction.user.guild_permissions, perm):

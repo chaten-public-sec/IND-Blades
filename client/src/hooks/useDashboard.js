@@ -11,8 +11,9 @@ export function useDashboard() {
   const [channels, setChannels] = useState([]);
   const [roles, setRoles] = useState([]);
   const [health, setHealth] = useState({});
-  const [autorole, setAutorole] = useState({ join_role_id: null, bindings: [] });
+  const [autorole, setAutorole] = useState({ join_role_id: null, bindings: [], strike_mapping: {} });
   const [notifications, setNotifications] = useState({ enabled: false, user_ids: [] });
+  const [strikeConfig, setStrikeConfig] = useState({ expiry_days: 7 });
   const [ping, setPing] = useState(-1);
   const [liveSync, setLiveSync] = useState(false);
   const [toast, setToast] = useState('');
@@ -73,6 +74,20 @@ export function useDashboard() {
     } catch {}
   }, []);
 
+  const refreshUsers = useCallback(async () => {
+    try {
+      const r = await api.get('/api/users');
+      setUsers(Array.isArray(r.data) ? r.data : []);
+    } catch {}
+  }, []);
+
+  const refreshStrikeConfig = useCallback(async () => {
+    try {
+      const r = await api.get('/api/strikes/config');
+      setStrikeConfig(r.data || { expiry_days: 7 });
+    } catch {}
+  }, []);
+
   useEffect(() => {
     let active = true;
     let interval = null;
@@ -106,8 +121,9 @@ export function useDashboard() {
         setActivity(d.activity || { users: {}, last_reset: 0 });
         setLogs(Array.isArray(d.logs) ? d.logs : []);
         setUsers(Array.isArray(d.users) ? d.users : []);
-        setAutorole(d.autorole || { join_role_id: null, bindings: [] });
+        setAutorole(d.autorole || { join_role_id: null, bindings: [], strike_mapping: {} });
         setNotifications(d.notifications || { enabled: false, user_ids: [] });
+        setStrikeConfig(d.strike_config || { expiry_days: 7 });
         setChannels(Array.isArray(channelsRes.data) ? channelsRes.data : []);
         setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : []);
 
@@ -123,23 +139,12 @@ export function useDashboard() {
 
           switch (data.type) {
             case 'EVENT_CREATED':
-              showToast(`Event "${data.payload.event?.desc}" created.`);
-              refreshEvents();
-              break;
             case 'EVENT_UPDATED':
-              showToast(`Event "${data.payload.event?.desc}" updated.`);
-              refreshEvents();
-              break;
             case 'EVENT_DELETED':
-              showToast('Event deleted.');
-              refreshEvents();
-              break;
             case 'EVENT_PAUSED':
-              showToast(`Paused event "${data.payload.event?.desc}".`);
-              refreshEvents();
-              break;
             case 'EVENT_RESUMED':
-              showToast(`Resumed event "${data.payload.event?.desc}".`);
+            case 'EVENT_ATTENDANCE_UPDATED':
+              showToast(`Event updated.`);
               refreshEvents();
               break;
             case 'WELCOME_UPDATED':
@@ -147,19 +152,26 @@ export function useDashboard() {
               refreshWelcome();
               break;
             case 'USER_UPDATED':
-              showToast('Stats updated.');
-              refreshActivity();
+            case 'STRIKE_ADDED':
+            case 'STRIKE_REMOVED':
+            case 'ROLE_UPDATED':
+              showToast('User data updated.');
+              refreshUsers();
               break;
             case 'LOG_UPDATED':
               refreshLogs();
               break;
             case 'AUTOROLE_UPDATED':
               showToast('Auto role settings updated.');
-              setAutorole(data.payload.config || { join_role_id: null, bindings: [] });
+              setAutorole(data.payload.config || { join_role_id: null, bindings: [], strike_mapping: {} });
               break;
             case 'NOTIFICATIONS_UPDATED':
               showToast('Notification settings updated.');
               setNotifications(data.payload.config || { enabled: false, user_ids: [] });
+              break;
+            case 'STRIKE_CONFIG_UPDATED':
+              showToast('Strike configuration updated.');
+              setStrikeConfig(data.payload || { expiry_days: 7 });
               break;
             case 'LOG_SETTINGS_UPDATED':
               showToast('Log settings updated.');
@@ -168,6 +180,7 @@ export function useDashboard() {
               refreshEvents();
               refreshWelcome();
               refreshActivity();
+              refreshUsers();
               break;
             default:
               console.warn('[Socket] Unknown update type:', data.type);
@@ -214,9 +227,9 @@ export function useDashboard() {
   })();
 
   return {
-    events, config, activity, logs, users, channels, roles, health, autorole, notifications,
+    events, config, activity, logs, users, channels, roles, health, autorole, notifications, strikeConfig,
     ping, liveSync, toast, errorMessage, loading, roster,
-    setConfig, setEvents, setAutorole, setNotifications,
-    showToast, handleError, logout, refreshEvents, refreshWelcome, refreshActivity, refreshLogs,
+    setConfig, setEvents, setAutorole, setNotifications, setStrikeConfig,
+    showToast, handleError, logout, refreshEvents, refreshWelcome, refreshActivity, refreshLogs, refreshUsers, refreshStrikeConfig,
   };
 }

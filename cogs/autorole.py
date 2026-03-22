@@ -15,12 +15,44 @@ def get_autorole_config():
     return {
         "join_role_id": config.get("join_role_id"),
         "bindings": config.get("bindings", []),
+        "strike_mapping": config.get("strike_mapping", {}),
     }
 
 
 class AutoRole(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_strike_updated(self, guild, member, count, reason):
+        if member.bot: return
+        
+        config = get_autorole_config()
+        mapping = config.get("strike_mapping", {})
+        
+        if not mapping: return
+
+        # Mapping is like {"1": "role_id_a", "2": "role_id_b", "3": "role_id_c"}
+        # We should find the role for the current strike count
+        target_role_id = mapping.get(str(count))
+        
+        # Collect all strike roles to remove others
+        all_strike_role_ids = set(mapping.values())
+        
+        roles_to_remove = []
+        for r_id in all_strike_role_ids:
+            if str(r_id) == str(target_role_id): continue
+            role = guild.get_role(int(r_id))
+            if role and role in member.roles:
+                roles_to_remove.append(role)
+        
+        if roles_to_remove:
+            await member.remove_roles(*roles_to_remove, reason=f"Strike count updated to {count}")
+            
+        if target_role_id:
+            target_role = guild.get_role(int(target_role_id))
+            if target_role and target_role not in member.roles:
+                await member.add_roles(target_role, reason=f"Strike count updated to {count}")
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):

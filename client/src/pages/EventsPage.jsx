@@ -34,6 +34,7 @@ export default function EventsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ ...emptyForm });
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const update = useCallback((field, value) => {
     setForm((f) => {
@@ -93,6 +94,11 @@ export default function EventsPage() {
     catch (err) { handleError(err, 'Failed to toggle.'); }
   };
 
+  const getUserName = (id) => {
+    const u = roster.find(r => r.id === id);
+    return u ? (u.name || u.username) : `User ${id.slice(-4)}`;
+  };
+
   return (
     <div className="space-y-6 animate-[fadeIn_0.3s_ease]">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -112,14 +118,15 @@ export default function EventsPage() {
                 <TableHeaderCell>Time</TableHeaderCell>
                 <TableHeaderCell>Route</TableHeaderCell>
                 <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell>Attendance</TableHeaderCell>
                 <TableHeaderCell className="text-right">Actions</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {events.map((event) => (
                 <TableRow key={event.id}>
-                  <TableCell>
-                    <p className="font-semibold">{event.desc}</p>
+                  <TableCell onClick={() => setSelectedEvent(event)} className="cursor-pointer hover:bg-white/5 transition-colors">
+                    <p className="font-semibold text-cyan-400 underline-offset-4 hover:underline">{event.desc}</p>
                     <p className="mt-0.5 text-xs text-[var(--text-muted)]">{event.daily ? 'Daily' : 'Once'}</p>
                   </TableCell>
                   <TableCell className="font-mono">{event.time}</TableCell>
@@ -129,6 +136,16 @@ export default function EventsPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={event.enabled ? 'success' : 'danger'}>{event.enabled ? 'Active' : 'Paused'}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs font-bold text-green-400">✅ {event.attending?.length || 0}</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs font-bold text-red-400">❌ {event.not_attending?.length || 0}</span>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -141,13 +158,65 @@ export default function EventsPage() {
               ))}
               {events.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center text-[var(--text-muted)]">No events yet. Create one to get started.</TableCell>
+                  <TableCell colSpan={6} className="py-12 text-center text-[var(--text-muted)]">No events yet. Create one to get started.</TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {/* Event Detail Dialog */}
+      <Dialog open={Boolean(selectedEvent)} onOpenChange={(open) => !open && setSelectedEvent(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedEvent?.desc}</DialogTitle>
+            <DialogDescription>Real-time attendance details</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <h4 className="font-bold text-green-400">✅ Attending ({selectedEvent?.attending?.length || 0})</h4>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
+                  {selectedEvent?.attending?.length > 0 ? (
+                    selectedEvent.attending.map(id => (
+                      <div key={id} className="surface-soft rounded-lg p-2 text-sm flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-400" />
+                        {getUserName(id)}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-[var(--text-muted)] italic">No one yet</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <h4 className="font-bold text-red-400">❌ Not Attending ({selectedEvent?.not_attending?.length || 0})</h4>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
+                  {selectedEvent?.not_attending?.length > 0 ? (
+                    selectedEvent.not_attending.map(id => (
+                      <div key={id} className="surface-soft rounded-lg p-2 text-sm flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-400" />
+                        {getUserName(id)}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-[var(--text-muted)] italic">No one yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSelectedEvent(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Event Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>

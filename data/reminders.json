@@ -1,87 +1,71 @@
 {
-  "__welcome__": {
-    "enabled": false,
-    "channel_id": 1478106773595357185
-  },
-  "__activity__": {
-    "users": {},
-    "last_reset": 1774180728
-  },
-  "__logs__": {
-    "enabled": true,
-    "moderation_channel_id": 1478106773595357185,
-    "event_channel_id": 1478106738359144498,
-    "system_channel_id": 1478106738359144498
-  },
-  "b274cd68-7f2d-4164-8776-f825ca2c3b57": {
-    "id": "b274cd68-7f2d-4164-8776-f825ca2c3b57",
-    "desc": "Harbor",
-    "time": "18:40",
-    "daily": false,
-    "enabled": true,
-    "delivery_mode": "server",
-    "target_type": "channel",
-    "target_id": 1478106725176447046,
-    "mention_role_id": null,
-    "channel_id": 1478106725176447046,
-    "creator_id": null,
-    "going": [],
-    "not_sure": [],
-    "vote_message_id": null,
-    "vote_message_map": {},
-    "last_vote_date": "2026-01-02",
-    "last_reminded_date": "2026-01-02",
-    "event_date": null,
-    "voting_closed": false
-  },
-  "02442d97-e2d3-431b-a43a-070e15af4319": {
-    "id": "02442d97-e2d3-431b-a43a-070e15af4319",
-    "time": "19:50",
-    "desc": "Foundary",
-    "daily": false,
-    "going": [],
-    "not_sure": [],
-    "vote_message_id": null,
-    "vote_message_map": {},
-    "last_vote_date": "2026-01-02",
-    "last_reminded_date": "2026-01-02",
-    "event_date": null,
-    "voting_closed": false,
-    "channel_id": 1478106834022961242,
-    "mention_role_id": null,
-    "enabled": false,
-    "delivery_mode": "server",
-    "creator_id": 1213688605168635945,
-    "target_type": "channel",
-    "target_id": 1478106834022961242
-  },
-  "03b57a0c-9f17-4d3c-9f19-7f8c882e50bc": {
-    "id": "03b57a0c-9f17-4d3c-9f19-7f8c882e50bc",
-    "time": "21:40",
-    "desc": "Harbor",
-    "daily": false,
-    "going": [],
-    "not_sure": [],
-    "vote_message_id": null,
-    "vote_message_map": {},
-    "last_vote_date": "2026-01-02",
-    "last_reminded_date": "2026-01-02",
-    "event_date": null,
-    "voting_closed": false,
-    "channel_id": 1478106725176447046,
-    "mention_role_id": null,
-    "enabled": false,
-    "delivery_mode": "server",
-    "creator_id": null,
-    "target_type": "channel",
-    "target_id": 1478106725176447046
-  },
-  "__autorole__": {
-    "join_role_id": null,
-    "bindings": []
-  },
-  "__notifications__": {
-    "enabled": false,
-    "user_ids": []
-  }
+    "__welcome__": {
+        "enabled": false,
+        "channel_id": 1478106773595357185
+    },
+    "__activity__": {
+        "users": {},
+        "last_reset": 1774180728
+    },
+    "__logs__": {
+        "enabled": true,
+        "moderation_channel_id": 1478106773595357185,
+        "event_channel_id": 1478106738359144498,
+        "system_channel_id": 1478106738359144498
+    },
+    "__autorole__": {
+        "join_role_id": null,
+        "bindings": [],
+        "strike_mapping": {
+            "1": 1478028516036448291,
+            "2": 1485193244609351801,
+            "3": 1478101837361188986
+        }
+    },
+    "__notifications__": {
+        "enabled": false,
+        "user_ids": []
+    },
+    "__strikes__": {
+        "1213688605168635945": {
+            "user_id": 1213688605168635945,
+            "strikes": [
+                {
+                    "reason": "Missed Event: Harbor",
+                    "timestamp": "2026-03-22T15:48:31.347654+00:00",
+                    "expires_at": "2026-03-29T15:48:31.347664+00:00"
+                },
+                {
+                    "reason": "Missed Event: Foundary",
+                    "timestamp": "2026-03-22T15:51:01.072037+00:00",
+                    "expires_at": "2026-03-29T15:51:01.072053+00:00"
+                }
+            ],
+            "strike_count": 2
+        }
+    },
+    "__strikes_config__": {
+        "expiry_days": 7
+    },
+    "03b57a0c-9f17-4d3c-9f19-7f8c882e50bc": {
+        "id": "03b57a0c-9f17-4d3c-9f19-7f8c882e50bc",
+        "time": "21:40",
+        "desc": "Harbor",
+        "daily": true,
+        "attending": [],
+        "not_attending": [],
+        "vote_message_id": null,
+        "vote_message_map": {},
+        "last_vote_date": "2026-01-02",
+        "last_reminded_date": "2026-01-02",
+        "event_date": null,
+        "voting_closed": false,
+        "channel_id": "1478106725176447046",
+        "mention_role_id": "1478101922597703720",
+        "enabled": false,
+        "delivery_mode": "server",
+        "creator_id": null,
+        "target_type": "channel",
+        "target_id": "1478106725176447046"
+    }
 }

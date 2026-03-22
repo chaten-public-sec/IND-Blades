@@ -11,7 +11,7 @@ from utils.storage import load_data, save_data
 
 IST = timezone(timedelta(hours=5, minutes=30))
 GOING_EMOJI = "✅"
-NOT_SURE_EMOJI = "❔"
+NOT_SURE_EMOJI = "❌"
 REMINDER_CHANNEL_ID = int(os.getenv("REMINDER_CHANNEL_ID", "0") or 0)
 FAMILY_ROLE_ID = int(os.getenv("FAMILY_ROLE_ID", "0") or 0)
 GUILD_ID = int(os.getenv("GUILD_ID", "0") or 0)
@@ -50,8 +50,8 @@ def load_reminders():
             "time": str(value.get("time") or ""),
             "desc": str(value.get("desc") or value.get("name") or "Untitled Event"),
             "daily": bool(value.get("daily", False)),
-            "going": [str(user_id) for user_id in value.get("going", []) if user_id is not None],
-            "not_sure": [str(user_id) for user_id in value.get("not_sure", []) if user_id is not None],
+            "attending": [str(user_id) for user_id in (value.get("attending") or value.get("going") or []) if user_id is not None],
+            "not_attending": [str(user_id) for user_id in (value.get("not_attending") or value.get("not_sure") or []) if user_id is not None],
             "vote_message_id": normalize_id(value.get("vote_message_id")),
             "vote_message_map": {
                 str(user_id): str(message_id)
@@ -596,7 +596,7 @@ class Reminders(commands.Cog):
         embed = discord.Embed(
             title=f"🗓️ {reminder.get('desc', 'Event')}",
             description=(
-                f"{status_text}\n"
+                f"⚡ Join the event or you may get a strike\n"
                 "━━━━━━━━━━━━━━━━━━\n"
                 f"Mode: {'DM' if reminder.get('delivery_mode') == 'dm' else 'Server'}\n"
                 f"Time: {reminder.get('time', 'Not set')} IST\n"
@@ -605,13 +605,13 @@ class Reminders(commands.Cog):
             color=color,
         )
         embed.add_field(
-            name=f"Attendees ({len(reminder.get('going', []))})",
-            value=self.format_list(reminder.get("going", [])),
+            name=f"✅ Attending ({len(reminder.get('attending', []))})",
+            value=self.format_list(reminder.get("attending", [])),
             inline=False,
         )
         embed.add_field(
-            name=f"Not Sure ({len(reminder.get('not_sure', []))})",
-            value=self.format_list(reminder.get("not_sure", [])),
+            name=f"❌ Not Attending ({len(reminder.get('not_attending', []))})",
+            value=self.format_list(reminder.get("not_attending", [])),
             inline=False,
         )
         embed.set_footer(text="IND Blades")
@@ -630,8 +630,8 @@ class Reminders(commands.Cog):
             color=0x6EE7B7,
         )
         embed.add_field(
-            name=f"Attendees ({len(reminder.get('going', []))})",
-            value=self.format_list(reminder.get("going", [])),
+            name=f"✅ Attending ({len(reminder.get('attending', []))})",
+            value=self.format_list(reminder.get("attending", [])),
             inline=False,
         )
         embed.set_footer(text="IND Blades")
@@ -821,24 +821,24 @@ class Reminders(commands.Cog):
             return
 
         user_id = str(payload.user_id)
-        going = set(reminder.get("going", []))
-        not_sure = set(reminder.get("not_sure", []))
+        attending = set(reminder.get("attending", []))
+        not_attending = set(reminder.get("not_attending", []))
 
         if add:
             if emoji == GOING_EMOJI:
-                going.add(user_id)
-                not_sure.discard(user_id)
+                attending.add(user_id)
+                not_attending.discard(user_id)
             else:
-                not_sure.add(user_id)
-                going.discard(user_id)
+                not_attending.add(user_id)
+                attending.discard(user_id)
         else:
             if emoji == GOING_EMOJI:
-                going.discard(user_id)
+                attending.discard(user_id)
             else:
-                not_sure.discard(user_id)
+                not_attending.discard(user_id)
 
-        reminder["going"] = sorted(going)
-        reminder["not_sure"] = sorted(not_sure)
+        reminder["attending"] = sorted(attending)
+        reminder["not_attending"] = sorted(not_attending)
         save_reminders(self.reminders)
         await self.refresh_vote_messages(reminder["id"])
 
@@ -900,8 +900,8 @@ class Reminders(commands.Cog):
             "time": time.strip(),
             "desc": desc.strip(),
             "daily": daily,
-            "going": [],
-            "not_sure": [],
+            "attending": [],
+            "not_attending": [],
             "vote_message_id": None,
             "vote_message_map": {},
             "last_vote_date": None,
@@ -998,6 +998,7 @@ class Reminders(commands.Cog):
                     guild = self.get_guild()
                     if sent_any:
                         self.bot.dispatch("event_executed", guild, reminder, "Event triggered successfully")
+                        self.bot.dispatch("check_event_attendance", guild, reminder)
 
                     if reminder.get("daily"):
                         reminder["going"] = []
