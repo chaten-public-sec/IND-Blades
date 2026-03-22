@@ -47,7 +47,7 @@ def generate_welcome_embed(member: discord.Member):
     embed = discord.Embed(
         title="",
         description=(
-            f"✨ Welcome {member.mention} to the Sanctuary! ✨\n\n"
+            f"✨ Welcome {member.mention} to the IND Blades Family! ✨\n\n"
             "We're thrilled to have you here. Please verify yourself, grab your roles, and dive into the voice chats!\n\n"
             "Let's make some amazing memories! ⚡\n\n"
             f"**Member #{member_count}** • IND Blades • Premium Entry"
