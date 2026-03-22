@@ -21,7 +21,7 @@ RUN npm install --production
 
 # Install Python deps
 WORKDIR /app
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
 # Install frontend deps and build
 WORKDIR /app/client
