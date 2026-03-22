@@ -126,7 +126,7 @@ class Moderation(commands.Cog):
         
         for user_id, user_data in data["__strikes__"].items():
             original_count = len(user_data["strikes"])
-            user_data["strikes"] = [s for s in user_data["strikes"] if discord.utils.parse_datetime(s["expires_at"]) > now]
+            user_data["strikes"] = [s for s in user_data["strikes"] if discord.utils.parse_time(s["expires_at"]) > now]
             
             if len(user_data["strikes"]) != original_count:
                 user_data["strike_count"] = len(user_data["strikes"])
