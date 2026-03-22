@@ -1,0 +1,150 @@
+[
+  {
+    "id": "42037a2a-82bf-4b45-b67e-f4f1e1b0615a",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1346375385297846364"
+    },
+    "status": "failed",
+    "created_at": "2026-03-22T11:10:51.230Z",
+    "error": "Unable to send preview",
+    "completed_at": "2026-03-22T11:10:54.771391+00:00"
+  },
+  {
+    "id": "84e2ae0c-596f-4edd-bbf7-9b69becf1ea4",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1346375385297846364"
+    },
+    "status": "failed",
+    "created_at": "2026-03-22T11:11:08.324Z",
+    "error": "Unable to send preview",
+    "completed_at": "2026-03-22T11:11:09.760548+00:00"
+  },
+  {
+    "id": "15e8c1c1-f5c5-435e-abaa-8f70be5402bb",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1346375385297846364"
+    },
+    "status": "failed",
+    "created_at": "2026-03-22T11:11:18.925Z",
+    "error": "Unable to send preview",
+    "completed_at": "2026-03-22T11:11:19.768074+00:00"
+  },
+  {
+    "id": "cd07825e-5cec-405e-8f3d-90337fe17ccd",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1346375385297846364"
+    },
+    "status": "failed",
+    "created_at": "2026-03-22T11:11:27.549Z",
+    "error": "Unable to send preview",
+    "completed_at": "2026-03-22T11:11:29.757546+00:00"
+  },
+  {
+    "id": "907efa88-4202-440e-b1c7-3d0060bc3dfa",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1346375385297846364"
+    },
+    "status": "failed",
+    "created_at": "2026-03-22T11:11:29.248Z",
+    "error": "Unable to send preview",
+    "completed_at": "2026-03-22T11:11:29.758903+00:00"
+  },
+  {
+    "id": "699a824a-fa20-4611-a40a-2ab999bbf88e",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1346375385297846364"
+    },
+    "status": "failed",
+    "created_at": "2026-03-22T11:11:46.371Z",
+    "error": "Unable to send preview",
+    "completed_at": "2026-03-22T11:11:49.763485+00:00"
+  },
+  {
+    "id": "d43f78d4-c8b4-49bd-b420-404cb4ecbf5f",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1346375385297846364"
+    },
+    "status": "failed",
+    "created_at": "2026-03-22T11:12:54.974Z",
+    "error": "Unable to send preview",
+    "completed_at": "2026-03-22T11:12:55.560674+00:00"
+  },
+  {
+    "id": "a90bf44d-e5e7-47ad-a2d3-dcbdf26c5e2f",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1346375385297846364"
+    },
+    "status": "failed",
+    "created_at": "2026-03-22T11:16:28.114Z",
+    "error": "Unable to send preview",
+    "completed_at": "2026-03-22T11:16:30.459246+00:00"
+  },
+  {
+    "id": "44b8ff3c-acd4-4d25-9c1d-978240d2064e",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1478106820072701962"
+    },
+    "status": "completed",
+    "created_at": "2026-03-22T11:19:56.303Z",
+    "completed_at": "2026-03-22T11:20:01.469748+00:00"
+  },
+  {
+    "id": "6831c4b2-4d05-4957-af92-609821f00728",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1478106820072701962"
+    },
+    "status": "completed",
+    "created_at": "2026-03-22T11:20:07.298Z",
+    "completed_at": "2026-03-22T11:20:17.146178+00:00"
+  },
+  {
+    "id": "e882a83c-8625-4f98-b4b3-e240a06e215a",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1478106820072701962"
+    },
+    "status": "completed",
+    "created_at": "2026-03-22T11:20:55.417Z",
+    "completed_at": "2026-03-22T11:21:00.517380+00:00"
+  },
+  {
+    "id": "7fa295d0-a35c-4bb8-ae64-9cd00b2483cb",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1478106773595357185"
+    },
+    "status": "completed",
+    "created_at": "2026-03-22T11:21:06.148Z",
+    "completed_at": "2026-03-22T11:21:09.991936+00:00"
+  },
+  {
+    "id": "dcf84198-ad84-4663-8ac2-5a50f9dc6ae6",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1478106773595357185"
+    },
+    "status": "completed",
+    "created_at": "2026-03-22T11:57:58.668Z",
+    "completed_at": "2026-03-22T11:58:02.885394+00:00"
+  },
+  {
+    "id": "837289b5-c274-4198-ad84-708beefbf0ed",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1478106773595357185"
+    },
+    "status": "completed",
+    "created_at": "2026-03-22T14:26:02.582Z",
+    "completed_at": "2026-03-22T14:26:13.428284+00:00"
+  }
+]
