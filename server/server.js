@@ -799,13 +799,19 @@ const app = express();
 const server = http.createServer(app);
 const corsOptions = createCorsOptions();
 const io = new Server(server, {
-  cors: corsOptions
+  cors: {
+    origin: true,
+    credentials: true
+  }
 });
-const port = Number(getEnv('PORT', process.env.PORT || 3001));
+const port = process.env.PORT || 10000;
 const dashboardKey = getEnv('DASHBOARD_KEY', '123456');
 const sessionSecret = getEnv('SESSION_SECRET', dashboardKey);
 
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
 app.use(
   session({
@@ -1205,8 +1211,81 @@ app.post('/api/notifications', (req, res) => {
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'That page was not found.' });
 });
+process.on('uncaughtException', (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error("Unhandled Rejection:", err);
+});
+
+const { spawn } = require('child_process');
+
+function startBot() {
+  const botPath = path.join(ROOT_DIR, 'bot.py');
+
+  console.log("Starting bot...");
+
+  const bot = spawn('python3', [botPath], {
+    stdio: 'inherit'
+  });
+
+  bot.on('close', (code) => {
+    console.log(`Bot exited with code ${code}. Restarting in 3s...`);
+    setTimeout(startBot, 3000);
+  });
+
+  bot.on('error', (err) => {
+    console.error("Bot failed to start:", err);
+    setTimeout(startBot, 5000);
+  });
+}
+
+startBot();
+
+setInterval(() => {
+  try {
+    const store = readStore();
+    const strikes = store.__strikes__ || {};
+    let changed = false;
+
+    for (const userId in strikes) {
+      const data = normalizeStrikeData(strikes[userId]);
+
+      const validStrikes = data.strikes.filter(
+        s => new Date(s.expires_at) > new Date()
+      );
+
+      if (validStrikes.length !== data.strikes.length) {
+        data.strikes = validStrikes;
+        data.strike_count = validStrikes.length;
+        strikes[userId] = data;
+        changed = true;
+
+        emitSystemUpdate('STRIKE_REMOVED', { user_id: userId });
+      }
+    }
+
+    if (changed) {
+      store.__strikes__ = strikes;
+      writeStore(store);
+      appendLog("Expired strikes cleaned automatically.", "info", "system");
+    }
+  } catch (err) {
+    console.error("Strike cleanup error:", err);
+  }
+}, 60 * 60 * 1000); 
+app.set('trust proxy', 1);
+
+global.fetch = global.fetch || require('node-fetch');
+
+app.use(express.static(path.join(ROOT_DIR, 'client/dist')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(ROOT_DIR, 'client/dist/index.html'));
+});
 
 server.listen(port, () => {
   appendLog(`API server listening on port ${port}.`, 'info', 'server');
-  console.log(`API server running on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });

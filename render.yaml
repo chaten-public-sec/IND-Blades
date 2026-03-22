@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: ind-blades-system
+    runtime: docker
+    plan: starter # Starter plan is required for 24/7 bot and Persistent Disk
+    region: singapore # Change this to your preferred region (e.g., ohio, frankfurt, etc.)
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DASHBOARD_KEY
+        sync: false # Set this in Render Dashboard for security
+      - key: DISCORD_TOKEN
+        sync: false # Set this in Render Dashboard for security
+      - key: GUILD_ID
+        sync: false # Set this in Render Dashboard for security
+      - key: PERPLEXITY_API_KEY
+        sync: false # Set this in Render Dashboard for security
+      - key: SESSION_SECRET
+        generateValue: true # Render will generate a unique secret for you
+      - key: ALLOWED_ORIGINS
+        value: "*" # Change this to your Render URL after first deployment for better security
+    disk:
+      name: ind_blades_data
+      mountPath: /app/data
+      sizeGB: 1
