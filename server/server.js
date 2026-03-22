@@ -881,6 +881,14 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: 'Please log in to continue.' });
 }
 
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: Date.now(),
+    uptime: process.uptime()
+  });
+});
+
 app.get('/api/test', (req, res) => {
   res.json({
     ...getHealth(),
