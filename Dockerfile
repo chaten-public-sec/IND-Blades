@@ -10,28 +10,22 @@ RUN apt-get update && \
 # Set working directory
 WORKDIR /app
 
-# Copy package files first (cache optimization)
-COPY server/package*.json ./server/
-COPY client/package*.json ./client/
-COPY requirements.txt ./
+# Copy all files first
+COPY . .
+
+# Install Python deps
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
 # Install backend deps
 WORKDIR /app/server
 RUN npm install --production
 
-# Install Python deps
-WORKDIR /app
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
-
 # Install frontend deps and build
 WORKDIR /app/client
 RUN npm install && npm run build
 
-# Copy rest of files
-WORKDIR /app
-COPY . .
-
 # Create required folders
+WORKDIR /app
 RUN mkdir -p /app/data
 
 # Expose port
