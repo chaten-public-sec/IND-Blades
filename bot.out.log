@@ -1759,3 +1759,28 @@ Logged in as Duplicate - IND Blades#6005
 Bot is ready
 [2026-03-22 20:36:13] [INFO    ] discord.gateway: Shard ID None has successfully RESUMED session 4fe70412f07d46fffcdf0c7d8cdae38d.
 [2026-03-22 22:00:38] [INFO    ] discord.gateway: Shard ID None has successfully RESUMED session 4fe70412f07d46fffcdf0c7d8cdae38d.
+[2026-03-22 22:16:40] [ERROR   ] discord.app_commands.tree: Ignoring exception in command tree
+Traceback (most recent call last):
+  File "C:\Users\chate\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\discord\app_commands\tree.py", line 1138, in wrapper
+    await self._call(interaction)
+  File "C:\Users\chate\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\discord\app_commands\tree.py", line 1270, in _call
+    command, options = self._get_app_command_options(data)
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\chate\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\discord\app_commands\tree.py", line 1174, in _get_app_command_options
+    raise CommandNotFound(name, parents)
+discord.app_commands.errors.CommandNotFound: Application command 'strike' not found
+[2026-03-22 22:17:11] [ERROR   ] discord.app_commands.tree: Ignoring exception in command tree
+Traceback (most recent call last):
+  File "C:\Users\chate\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\discord\app_commands\tree.py", line 1138, in wrapper
+    await self._call(interaction)
+  File "C:\Users\chate\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\discord\app_commands\tree.py", line 1270, in _call
+    command, options = self._get_app_command_options(data)
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\chate\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\discord\app_commands\tree.py", line 1174, in _get_app_command_options
+    raise CommandNotFound(name, parents)
+discord.app_commands.errors.CommandNotFound: Application command 'strike' not found
+[2026-03-22 22:57:11] [WARNING ] discord.gateway: Can't keep up, shard ID None websocket is 10.2s behind.
+[2026-03-22 22:58:44] [INFO    ] discord.gateway: Shard ID None has successfully RESUMED session 4fe70412f07d46fffcdf0c7d8cdae38d.
+[2026-03-22 23:00:18] [WARNING ] discord.gateway: Can't keep up, shard ID None websocket is 11.8s behind.
+[2026-03-22 23:02:33] [WARNING ] discord.gateway: Can't keep up, shard ID None websocket is 14.7s behind.
+[2026-03-22 23:03:08] [WARNING ] discord.gateway: Can't keep up, shard ID None websocket is 17.2s behind.
