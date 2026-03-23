@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { Card, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/table';
-import { Search, User, Clock, MessageSquare, Mic, ExternalLink, Filter } from 'lucide-react';
+import { Search, Clock, MessageSquare, Mic, ExternalLink, Filter } from 'lucide-react';
 import UserProfileDialog from '../components/UserProfileDialog';
 
 function formatDuration(s) {

@@ -1,10 +1,12 @@
+import { useState, useEffect } from 'react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 import { SelectField } from '../components/ui/select';
 import { Label } from '../components/ui/label';
-import { Shield, UserPlus, Link, Trash2, Save, Zap, Hash, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Shield, UserPlus, Link, Trash2, Save, Zap, Hash, ShieldCheck, ArrowRight, Plus } from 'lucide-react';
 
 export default function AutoRolePage() {
   const { autorole, setAutorole, roles, showToast, handleError } = useDashboardContext();

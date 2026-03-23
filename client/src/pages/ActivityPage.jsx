@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
 import { Card, CardContent } from '../components/ui/card';
