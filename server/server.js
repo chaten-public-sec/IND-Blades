@@ -456,6 +456,7 @@ function appendLog(message, level = 'info', source = 'server', meta = {}) {
     meta,
     timestamp: new Date().toISOString()
   });
+  // Keep last 500 logs only for production stability
   writeJson(LOGS_PATH, logs.slice(0, 500));
 }
 
@@ -827,7 +828,8 @@ const io = new Server(server, {
   cors: {
     origin: true,
     credentials: true
-  }
+  },
+  transports: ['websocket', 'polling'] // Both for reliability
 });
 const port = process.env.PORT || 3001;
 const dashboardKey = getEnv('DASHBOARD_KEY', '123456');
@@ -1267,37 +1269,96 @@ app.post('/api/notifications', (req, res) => {
   res.json({ success: true, config });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    bot: botState.connected ? 'connected' : 'disconnected'
+  });
+});
+
+app.get('/api/bot-status', (req, res) => {
+  res.json({
+    status: botState.connected ? 'connected' : 'disconnected'
+  });
+});
+
+// Bot Heartbeat from Python
+app.post('/api/bot/heartbeat', (req, res) => {
+  const { connected } = req.body || {};
+  if (connected !== undefined) {
+    const wasConnected = botState.connected;
+    botState.connected = !!connected;
+    
+    if (wasConnected !== botState.connected) {
+      emitSystemUpdate('BOT_STATUS_UPDATED', { connected: botState.connected });
+      
+      if (botState.connected) {
+        appendLog('Discord bot connected.', 'info', 'bot');
+        botState.lastAnnounced = true;
+      } else {
+        appendLog('Discord bot disconnected.', 'warning', 'bot');
+        botState.lastAnnounced = false;
+      }
+    }
+  }
+  res.json({ success: true });
+});
+
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'That page was not found.' });
 });
+
+// --- GLOBAL ERROR HANDLERS ---
 process.on('uncaughtException', (err) => {
-  console.error("Uncaught Exception:", err);
+  console.error('[CRITICAL] Uncaught Exception:', err);
+  appendLog(`Uncaught Exception: ${err.message}`, 'error', 'system');
+  // Do NOT exit in production unless necessary
 });
 
-process.on('unhandledRejection', (err) => {
-  console.error("Unhandled Rejection:", err);
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
+  appendLog(`Unhandled Rejection: ${reason}`, 'error', 'system');
 });
 
 const { spawn } = require('child_process');
 
+let botRetryDelay = 30000; // Start with 30s
+const MAX_BOT_RETRY_DELAY = 300000; // 5 mins
+const botState = { connected: false, lastAnnounced: false };
+
 function startBot() {
   const botPath = path.join(ROOT_DIR, 'bot.py');
-
-  console.log("Starting bot...");
-
-  const bot = spawn('python3', [botPath], {
-    stdio: 'inherit'
+  console.log(`[INFO] Starting bot process (Retry Delay: ${botRetryDelay / 1000}s)`);
+  
+  const botProcess = spawn('python3', [botPath], {
+    stdio: 'inherit',
+    env: { ...process.env, PYTHONUNBUFFERED: '1' }
   });
 
-  bot.on('close', (code) => {
-    console.log(`Bot exited with code ${code}. Restarting in 3s...`);
-    setTimeout(startBot, 3000);
+  botProcess.on('close', (code) => {
+    botState.connected = false;
+    console.error(`[ERROR] Bot process exited with code ${code}.`);
+    appendLog(`Bot exited with code ${code}. Re-spawning in ${botRetryDelay / 1000}s...`, 'error', 'bot');
+    
+    setTimeout(() => {
+      // Exponential backoff
+      botRetryDelay = Math.min(botRetryDelay * 2, MAX_BOT_RETRY_DELAY);
+      startBot();
+    }, botRetryDelay);
   });
 
-  bot.on('error', (err) => {
-    console.error("Bot failed to start:", err);
-    setTimeout(startBot, 5000);
+  botProcess.on('error', (err) => {
+    console.error('[ERROR] Bot spawn error:', err);
+    appendLog(`Failed to spawn bot: ${err.message}`, 'error', 'bot');
   });
+
+  // Reset delay if bot lasts longer than 2 mins
+  setTimeout(() => {
+    if (botProcess.exitCode === null) {
+      botRetryDelay = 30000;
+    }
+  }, 120000);
 }
 
 startBot();

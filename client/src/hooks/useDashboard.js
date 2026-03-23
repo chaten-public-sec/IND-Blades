@@ -15,6 +15,7 @@ export function useDashboard() {
   const [notifications, setNotifications] = useState({ enabled: false, user_ids: [] });
   const [strikeConfig, setStrikeConfig] = useState({ expiry_days: 7 });
   const [ping, setPing] = useState(-1);
+  const [botStatus, setBotStatus] = useState('disconnected');
   const [liveSync, setLiveSync] = useState(false);
   const [toast, setToast] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -124,6 +125,7 @@ export function useDashboard() {
         setAutorole(d.autorole || { join_role_id: null, bindings: [], strike_mapping: {} });
         setNotifications(d.notifications || { enabled: false, user_ids: [] });
         setStrikeConfig(d.strike_config || { expiry_days: 7 });
+        setBotStatus(d.bot_status || 'disconnected');
         setChannels(Array.isArray(channelsRes.data) ? channelsRes.data : []);
         setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : []);
 
@@ -211,6 +213,10 @@ export function useDashboard() {
             case 'LOG_SETTINGS_UPDATED':
               showToast('Log settings updated.');
               break;
+            case 'BOT_STATUS_UPDATED':
+              setBotStatus(data.payload?.connected ? 'connected' : 'disconnected');
+              if (data.payload?.connected) showToast('Discord bot is back online.');
+              break;
             case 'SYSTEM_REFRESH':
               refreshEvents();
               refreshWelcome();
@@ -263,7 +269,7 @@ export function useDashboard() {
 
   return {
     events, config, activity, logs, users, channels, roles, health, autorole, notifications, strikeConfig,
-    ping, liveSync, toast, errorMessage, loading, roster,
+    ping, botStatus, liveSync, toast, errorMessage, loading, roster,
     setConfig, setEvents, setAutorole, setNotifications, setStrikeConfig,
     showToast, handleError, logout, refreshEvents, refreshWelcome, refreshActivity, refreshLogs, refreshUsers, refreshStrikeConfig,
   };

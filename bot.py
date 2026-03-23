@@ -1,6 +1,9 @@
+import asyncio
 import os
+import time
+import requests
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -81,14 +84,38 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
     guild = bot.get_guild(GUILD_ID)
     if guild:
-        print(f"-> Prefetching members for guild: {guild.name} ({GUILD_ID})")
+        print(f"-> Prefetching ALL members for guild: {guild.name} ({GUILD_ID})")
         try:
-            # This ensures members are loaded into cache for the bot process
-            await guild.fetch_members().flatten()
-            print(f"-> Prefetched {len(guild.members)} members")
+            # Replaced cache reliance with full member fetch as per production spec
+            members = await guild.fetch_members().flatten()
+            print(f"-> Fetched {len(members)} members into cache")
+            # Notify backend
+            send_heartbeat(True)
         except Exception as e:
-            print(f"-> Failed to prefetch members: {e}")
+            print(f"-> Failed to fetch members: {e}")
+    
+    if not heartbeat_task.is_running():
+        heartbeat_task.start()
     print("Bot is ready")
 
+def send_heartbeat(connected: bool):
+    try:
+        # Get server port from env or default to 3001
+        port = os.getenv("PORT", "3001")
+        requests.post(f"http://127.0.0.1:{port}/api/bot/heartbeat", json={"connected": connected}, timeout=5)
+    except:
+        pass
 
-bot.run(DISCORD_TOKEN)
+@tasks.loop(seconds=60)
+async def heartbeat_task():
+    send_heartbeat(True)
+
+if __name__ == "__main__":
+    print("Starting bot safety loop...")
+    while True:
+        try:
+            bot.run(DISCORD_TOKEN)
+        except Exception as e:
+            print(f"Bot crashed with error: {e}. Retrying in 30s...")
+            send_heartbeat(False)
+            time.sleep(30)

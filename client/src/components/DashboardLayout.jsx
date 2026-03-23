@@ -97,11 +97,14 @@ export default function DashboardLayout() {
             </div>
           </nav>
 
-          {/* Sidebar footer */}
-          <div className="border-t border-[var(--border)] px-4 py-4">
+          <div className="border-t border-[var(--border)] px-4 py-4 space-y-2">
             <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
               <div className={`h-2 w-2 rounded-full ${apiOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.5)]'}`} />
-              {apiOnline ? `Online · ${dashboard.ping}ms` : 'Offline'}
+              {apiOnline ? `API Server: Online · ${dashboard.ping}ms` : 'API Server: Offline'}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+              <div className={`h-2 w-2 rounded-full ${dashboard.botStatus === 'connected' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.5)]'}`} />
+              Bot: {dashboard.botStatus === 'connected' ? 'Online' : 'Offline'}
             </div>
           </div>
         </aside>
