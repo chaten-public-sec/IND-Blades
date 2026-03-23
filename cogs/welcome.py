@@ -242,14 +242,17 @@ class Welcome(commands.Cog):
         return True
 
     async def send_preview_message(self, guild: discord.Guild, override_channel_id=None):
-        preview_member = guild.get_member(self.bot.user.id) if self.bot.user else None
+        user_id = self.bot.user.id if self.bot.user else None
+        preview_member = guild.get_member(user_id) if user_id else None
+        if not preview_member and user_id:
+            try:
+                preview_member = await guild.fetch_member(user_id)
+            except Exception:
+                preview_member = guild.me
+        
         if not preview_member:
             preview_member = guild.me
-        if not preview_member and self.bot.user:
-            try:
-                preview_member = await guild.fetch_member(self.bot.user.id)
-            except Exception:
-                preview_member = None
+            
         if not preview_member:
             if self.bot.user:
                 preview_member = type(

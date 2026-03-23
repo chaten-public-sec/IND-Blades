@@ -548,6 +548,77 @@ class EventPanelView(discord.ui.View):
             await self.message.edit(view=self)
 
 
+class VotingView(discord.ui.View):
+    def __init__(self, cog, reminder_id, closed=False):
+        super().__init__(timeout=None)
+        self.cog = cog
+        self.reminder_id = reminder_id
+
+        attend_btn = discord.ui.Button(
+            label="✅ Attend",
+            style=discord.ButtonStyle.success,
+            custom_id=f"vote_attend_{reminder_id}",
+            disabled=closed,
+        )
+        not_attend_btn = discord.ui.Button(
+            label="❌ Not Attending",
+            style=discord.ButtonStyle.danger,
+            custom_id=f"vote_notattend_{reminder_id}",
+            disabled=closed,
+        )
+
+        async def attend_callback(interaction: discord.Interaction):
+            await self.cog.sync_reminders()
+            reminder = self.cog.reminders.get(self.reminder_id)
+            if not reminder or reminder.get("voting_closed"):
+                await interaction.response.send_message("Voting is closed.", ephemeral=True)
+                return
+
+            user_id = str(interaction.user.id)
+            attending = set(reminder.get("attending", []))
+            not_attending = set(reminder.get("not_attending", []))
+
+            attending.add(user_id)
+            not_attending.discard(user_id)
+
+            reminder["attending"] = sorted(attending)
+            reminder["not_attending"] = sorted(not_attending)
+            save_reminders(self.cog.reminders)
+
+            await interaction.response.send_message(
+                "Join the Fam Event VC 🎧\nClick below to join",
+                ephemeral=True,
+            )
+            await self.cog.refresh_vote_messages(self.reminder_id)
+
+        async def not_attend_callback(interaction: discord.Interaction):
+            await self.cog.sync_reminders()
+            reminder = self.cog.reminders.get(self.reminder_id)
+            if not reminder or reminder.get("voting_closed"):
+                await interaction.response.send_message("Voting is closed.", ephemeral=True)
+                return
+
+            user_id = str(interaction.user.id)
+            attending = set(reminder.get("attending", []))
+            not_attending = set(reminder.get("not_attending", []))
+
+            not_attending.add(user_id)
+            attending.discard(user_id)
+
+            reminder["attending"] = sorted(attending)
+            reminder["not_attending"] = sorted(not_attending)
+            save_reminders(self.cog.reminders)
+
+            await interaction.response.defer()
+            await self.cog.refresh_vote_messages(self.reminder_id)
+
+        attend_btn.callback = attend_callback
+        not_attend_btn.callback = not_attend_callback
+
+        self.add_item(attend_btn)
+        self.add_item(not_attend_btn)
+
+
 class Reminders(commands.Cog):
     event_group = app_commands.Group(name="event", description="Event commands")
 
@@ -591,14 +662,16 @@ class Reminders(commands.Cog):
         return "Not set"
 
     def voting_embed(self, reminder, closed=False):
-        status_text = "Voting closed" if closed else "Vote now"
+        status_text = "Voting closed" if closed else "⚡ Join the event or you may get a strike"
         color = 0xED4245 if closed else 0x51A7FF
+        attending_list = self.format_list(reminder.get("attending", []))
+        not_attending_list = self.format_list(reminder.get("not_attending", []))
+
         embed = discord.Embed(
-            title=f"🗓️ {reminder.get('desc', 'Event')}",
+            title=f"📅 {reminder.get('desc', 'Event')}",
             description=(
-                f"⚡ Join the event or you may get a strike\n"
+                f"{status_text}\n"
                 "━━━━━━━━━━━━━━━━━━\n"
-                f"Mode: {'DM' if reminder.get('delivery_mode') == 'dm' else 'Server'}\n"
                 f"Time: {reminder.get('time', 'Not set')} IST\n"
                 f"Target: {self.describe_target(reminder)}"
             ),
@@ -606,12 +679,12 @@ class Reminders(commands.Cog):
         )
         embed.add_field(
             name=f"✅ Attending ({len(reminder.get('attending', []))})",
-            value=self.format_list(reminder.get("attending", [])),
+            value=attending_list,
             inline=False,
         )
         embed.add_field(
             name=f"❌ Not Attending ({len(reminder.get('not_attending', []))})",
-            value=self.format_list(reminder.get("not_attending", [])),
+            value=not_attending_list,
             inline=False,
         )
         embed.set_footer(text="IND Blades")
@@ -714,12 +787,15 @@ class Reminders(commands.Cog):
         if not reminder:
             return
 
+        closed = reminder.get("voting_closed", False)
+
         if reminder.get("vote_message_id"):
             channel = self.server_target_channel(reminder)
             if channel:
                 try:
                     message = await channel.fetch_message(int(reminder["vote_message_id"]))
-                    await self.edit_payload(message, self.voting_embed(reminder, reminder.get("voting_closed", False)))
+                    await self.edit_payload(message, self.voting_embed(reminder, closed))
+                    await message.edit(view=VotingView(self, reminder_id, closed))
                 except Exception:
                     pass
 
@@ -730,7 +806,8 @@ class Reminders(commands.Cog):
                 if not dm:
                     continue
                 message = await dm.fetch_message(int(message_id))
-                await self.edit_payload(message, self.voting_embed(reminder, reminder.get("voting_closed", False)))
+                await self.edit_payload(message, self.voting_embed(reminder, closed))
+                await message.edit(view=VotingView(self, reminder_id, closed))
             except Exception:
                 pass
 
@@ -741,7 +818,7 @@ class Reminders(commands.Cog):
                 try:
                     message = await channel.fetch_message(int(reminder["vote_message_id"]))
                     await self.edit_payload(message, self.voting_embed(reminder, True))
-                    await message.clear_reactions()
+                    await message.edit(view=VotingView(self, reminder["id"], True))
                 except Exception:
                     pass
 
@@ -753,7 +830,7 @@ class Reminders(commands.Cog):
                     continue
                 message = await dm.fetch_message(int(message_id))
                 await self.edit_payload(message, self.voting_embed(reminder, True))
-                await message.clear_reactions()
+                await message.edit(view=VotingView(self, reminder["id"], True))
             except Exception:
                 pass
 
@@ -771,12 +848,14 @@ class Reminders(commands.Cog):
         reminder["vote_message_id"] = None
         reminder["vote_message_map"] = {}
 
+        view = VotingView(self, reminder_id)
+
         if reminder.get("delivery_mode") == "dm":
             for user in await self.dm_targets(reminder):
                 try:
+                    dm_view = VotingView(self, reminder_id)
                     message = await self.send_payload(user, f"⏰ Event Voting: {reminder['desc']}", self.voting_embed(reminder))
-                    await message.add_reaction(GOING_EMOJI)
-                    await message.add_reaction(NOT_SURE_EMOJI)
+                    await message.edit(view=dm_view)
                     reminder["vote_message_map"][str(user.id)] = str(message.id)
                     sent_any = True
                 except Exception:
@@ -789,8 +868,7 @@ class Reminders(commands.Cog):
                     self.server_target_content(reminder, "⏰ Event Voting:"),
                     self.voting_embed(reminder),
                 )
-                await message.add_reaction(GOING_EMOJI)
-                await message.add_reaction(NOT_SURE_EMOJI)
+                await message.edit(view=view)
                 reminder["vote_message_id"] = str(message.id)
                 sent_any = True
 
@@ -1018,15 +1096,6 @@ class Reminders(commands.Cog):
     @scheduler.before_loop
     async def before_scheduler(self):
         await self.bot.wait_until_ready()
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
-        await self.update_vote(payload, True)
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
-        await self.update_vote(payload, False)
-
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Reminders(bot))

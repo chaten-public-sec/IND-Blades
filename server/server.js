@@ -14,7 +14,7 @@ const LOGS_PATH = path.join(DATA_DIR, 'logs.json');
 const COMMANDS_PATH = path.join(DATA_DIR, 'commands.json');
 const LEGACY_WELCOME_PATH = path.join(ROOT_DIR, 'welcome.json');
 const ENV_PATH = path.join(ROOT_DIR, '.env');
-const RESERVED_KEYS = new Set(['__activity__', '__welcome__', '__logs__', '__autorole__', '__notifications__']);
+const RESERVED_KEYS = new Set(['__activity__', '__welcome__', '__logs__', '__autorole__', '__notifications__', '__vc_config__', '__strikes__', '__strikes_config__']);
 const SNOWFLAKE_FIELD_PATTERN = /(:\s*)(\d{15,})(?=\s*[,}\]])/g;
 const SNOWFLAKE_STRING_PATTERN = /(:\s*)"(\d{15,})"(?=\s*[,}\]])/g;
 
@@ -261,6 +261,27 @@ function normalizeNotificationConfig(value) {
   };
 }
 
+function normalizeVcConfig(value) {
+  const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return {
+    channel_id: parseSnowflake(input.channel_id),
+    channel_name: String(input.channel_name || '')
+  };
+}
+
+function getVcConfig(store = readStore()) {
+  return normalizeVcConfig(store.__vc_config__);
+}
+
+function setVcConfig(partial) {
+  const store = readStore();
+  const current = getVcConfig(store);
+  const next = normalizeVcConfig({ ...current, ...partial });
+  store.__vc_config__ = next;
+  writeStore(store);
+  return next;
+}
+
 function syncLegacyWelcome(config) {
   writeSnowflakeJson(LEGACY_WELCOME_PATH, config);
 }
@@ -274,6 +295,9 @@ function ensureDataFiles() {
   store.__logs__ = normalizeLogSettings(store.__logs__);
   store.__autorole__ = normalizeAutoRoleConfig(store.__autorole__);
   store.__notifications__ = normalizeNotificationConfig(store.__notifications__);
+  if (!store.__activity__ || !store.__activity__.last_reset) {
+    store.__activity__ = { users: {}, last_reset: Math.floor(Date.now() / 1000) };
+  }
   writeStore(store);
   syncLegacyWelcome(store.__welcome__);
 
@@ -432,7 +456,7 @@ function appendLog(message, level = 'info', source = 'server', meta = {}) {
     meta,
     timestamp: new Date().toISOString()
   });
-  writeJson(LOGS_PATH, logs.slice(0, 250));
+  writeJson(LOGS_PATH, logs.slice(0, 500));
 }
 
 function getCommands() {
@@ -719,7 +743,8 @@ function buildUserResponse(members, activity) {
 }
 
 async function getUsers() {
-  if (Date.now() - lastUserCacheAt < 60000 && cachedUsers.length > 0) {
+  // Reduced cache time to 5 seconds to ensure fresh data while preventing spam
+  if (Date.now() - lastUserCacheAt < 5000 && cachedUsers.length > 0) {
     return cachedUsers;
   }
 
@@ -804,7 +829,7 @@ const io = new Server(server, {
     credentials: true
   }
 });
-const port = process.env.PORT || 10000;
+const port = process.env.PORT || 3001;
 const dashboardKey = getEnv('DASHBOARD_KEY', '123456');
 const sessionSecret = getEnv('SESSION_SECRET', dashboardKey);
 
@@ -1031,7 +1056,8 @@ app.post('/api/events/create', (req, res) => {
   const record = result.record;
   store[record.id] = record;
   writeStore(store);
-  emitDataRefresh();
+  invalidateCatalogCaches();
+  emitSystemUpdate('EVENT_CREATED', { event: normalizeEvent(record.id, record) });
   appendLog(`Created event "${record.desc}".`, 'info', 'events', { id: record.id });
   res.json({ success: true, event: normalizeEvent(record.id, record) });
 });
@@ -1057,7 +1083,8 @@ app.post('/api/events/update', (req, res) => {
 
   store[id] = result.record;
   writeStore(store);
-  emitDataRefresh();
+  invalidateCatalogCaches();
+  emitSystemUpdate('EVENT_UPDATED', { event: normalizeEvent(id, result.record) });
   appendLog(`Updated event "${result.record.desc}".`, 'info', 'events', { id });
   res.json({ success: true, event: normalizeEvent(id, result.record) });
 });
@@ -1079,7 +1106,9 @@ app.post('/api/events/toggle', (req, res) => {
   event.enabled = parseBoolean(req.body?.enabled, !event.enabled);
   store[id] = event;
   writeStore(store);
-  emitDataRefresh();
+  invalidateCatalogCaches();
+  const toggleType = event.enabled ? 'EVENT_RESUMED' : 'EVENT_PAUSED';
+  emitSystemUpdate(toggleType, { event });
   appendLog(`${event.enabled ? 'Enabled' : 'Disabled'} event "${event.desc}".`, 'info', 'events', { id });
   res.json({ success: true, event });
 });
@@ -1100,7 +1129,8 @@ app.post('/api/events/delete', (req, res) => {
   const event = normalizeEvent(id, store[id]);
   delete store[id];
   writeStore(store);
-  emitDataRefresh();
+  invalidateCatalogCaches();
+  emitSystemUpdate('EVENT_DELETED', { id, name: event.desc });
   appendLog(`Deleted event "${event.desc}".`, 'warning', 'events', { id });
   res.json({ success: true });
 });
@@ -1113,7 +1143,7 @@ app.post('/api/welcome/toggle', (req, res) => {
   const config = setWelcomeConfig({
     enabled: parseBoolean(req.body?.enabled, true)
   });
-  emitDataRefresh();
+  emitSystemUpdate('WELCOME_UPDATED', { config });
   appendLog(`Turned ${config.enabled ? 'on' : 'off'} the welcome system.`, 'info', 'welcome');
   res.json({ success: true, config });
 });
@@ -1122,7 +1152,7 @@ app.post('/api/welcome/channel', (req, res) => {
   const config = setWelcomeConfig({
     channel_id: parseSnowflake(req.body?.channel_id)
   });
-  emitDataRefresh();
+  emitSystemUpdate('WELCOME_UPDATED', { config });
   appendLog('Updated the welcome channel.', 'info', 'welcome');
   res.json({ success: true, config });
 });
@@ -1159,7 +1189,7 @@ app.post('/api/log-settings', (req, res) => {
     partial.system_channel_id = parseSnowflake(req.body?.system_channel_id);
   }
   const settings = setLogSettings(partial);
-  emitDataRefresh();
+  emitSystemUpdate('LOG_SETTINGS_UPDATED', { settings });
   appendLog('Updated log settings.', 'info', 'settings');
   res.json({ success: true, settings });
 });
@@ -1170,13 +1200,20 @@ app.get('/api/activity/stats', (req, res) => {
 
 app.post('/api/activity/reset', (req, res) => {
   const stats = resetActivityStats();
-  emitDataRefresh();
+  emitSystemUpdate('SYSTEM_REFRESH');
   appendLog('Reset weekly activity stats.', 'warning', 'activity');
   res.json({ success: true, stats });
 });
 
 app.get('/api/logs', (req, res) => {
   res.json(getLogs());
+});
+
+app.post('/api/logs/clear', (req, res) => {
+  writeJson(LOGS_PATH, []);
+  emitSystemUpdate('LOG_UPDATED', { cleared: true });
+  appendLog('Logs cleared successfully.', 'info', 'system');
+  res.json({ success: true });
 });
 
 app.get('/api/users', async (req, res) => {
@@ -1193,14 +1230,28 @@ app.get('/api/users/:id', async (req, res) => {
   res.json(user);
 });
 
+app.get('/api/users/:id/strikes', (req, res) => {
+  const data = getUserStrikes(req.params.id);
+  res.json(data);
+});
+
+app.get('/api/vc-config', (req, res) => {
+  res.json(getVcConfig());
+});
+
+app.post('/api/vc-config', (req, res) => {
+  const config = setVcConfig(req.body || {});
+  appendLog('Updated VC config.', 'info', 'settings');
+  res.json({ success: true, config });
+});
+
 app.get('/api/autorole', (req, res) => {
   res.json(getAutoRoleConfig());
 });
 
 app.post('/api/autorole', (req, res) => {
   const config = setAutoRoleConfig(req.body || {});
-  emitDataRefresh();
-  io.emit('autoroleUpdated');
+  emitSystemUpdate('AUTOROLE_UPDATED', { config });
   appendLog('Updated auto role settings.', 'info', 'autorole');
   res.json({ success: true, config });
 });
@@ -1211,7 +1262,7 @@ app.get('/api/notifications', (req, res) => {
 
 app.post('/api/notifications', (req, res) => {
   const config = setNotificationConfig(req.body || {});
-  emitDataRefresh();
+  emitSystemUpdate('NOTIFICATIONS_UPDATED', { config });
   appendLog('Updated notification settings.', 'info', 'notifications');
   res.json({ success: true, config });
 });

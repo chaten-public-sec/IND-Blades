@@ -84,6 +84,12 @@ class Moderation(commands.Cog):
         
         for user_id in missed_users:
             member = guild.get_member(int(user_id))
+            if not member:
+                try:
+                    member = await guild.fetch_member(int(user_id))
+                except:
+                    pass
+            
             if not member: continue
             
             if user_id not in data["__strikes__"]:
@@ -132,9 +138,14 @@ class Moderation(commands.Cog):
                 user_data["strike_count"] = len(user_data["strikes"])
                 changed = True
                 # Dispatch update for role sync
-                guild = self.bot.get_guild(int(os.getenv("GUILD_ID")))
                 if guild:
                     member = guild.get_member(int(user_id))
+                    if not member:
+                        try:
+                            member = await guild.fetch_member(int(user_id))
+                        except:
+                            pass
+                    
                     if member:
                         self.bot.dispatch("strike_updated", guild, member, user_data["strike_count"], "expired")
 

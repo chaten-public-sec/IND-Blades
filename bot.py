@@ -9,11 +9,12 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GUILD_ID = int(os.getenv("GUILD_ID"))
 
 intents = discord.Intents.default()
-intents.message_content = True
-intents.reactions = True
+intents.members = True
+intents.presences = True
 intents.guilds = True
 intents.voice_states = True
-intents.members = True
+intents.message_content = True
+intents.reactions = True
 
 
 class MyBot(commands.Bot):
@@ -78,6 +79,15 @@ async def ping(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
+    guild = bot.get_guild(GUILD_ID)
+    if guild:
+        print(f"-> Prefetching members for guild: {guild.name} ({GUILD_ID})")
+        try:
+            # This ensures members are loaded into cache for the bot process
+            await guild.fetch_members().flatten()
+            print(f"-> Prefetched {len(guild.members)} members")
+        except Exception as e:
+            print(f"-> Failed to prefetch members: {e}")
     print("Bot is ready")
 
 

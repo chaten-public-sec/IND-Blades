@@ -129,7 +129,21 @@ export function useDashboard() {
 
         const socket = createRealtimeClient();
         socketRef.current = socket;
-        socket.on('connect', () => active && setLiveSync(true));
+        socket.on('connect', () => {
+          if (!active) return;
+          setLiveSync(true);
+          // Re-fetch all data on reconnect
+          if (socketRef.current?._reconnecting) {
+            refreshEvents();
+            refreshWelcome();
+            refreshActivity();
+            refreshUsers();
+            refreshLogs();
+            refreshStrikeConfig();
+            showToast('Reconnected. Data synced.');
+          }
+          socketRef.current._reconnecting = true;
+        });
         socket.on('disconnect', () => active && setLiveSync(false));
         socket.on('connect_error', () => active && setLiveSync(false));
 
@@ -139,12 +153,27 @@ export function useDashboard() {
 
           switch (data.type) {
             case 'EVENT_CREATED':
+              showToast(`Event "${data.payload?.event?.desc || ''}" created.`);
+              refreshEvents();
+              break;
             case 'EVENT_UPDATED':
+              showToast(`Event "${data.payload?.event?.desc || ''}" updated.`);
+              refreshEvents();
+              break;
             case 'EVENT_DELETED':
+              showToast(`Event "${data.payload?.name || ''}" deleted.`);
+              refreshEvents();
+              break;
             case 'EVENT_PAUSED':
+              showToast(`Event "${data.payload?.event?.desc || ''}" paused.`);
+              refreshEvents();
+              break;
             case 'EVENT_RESUMED':
+              showToast(`Event "${data.payload?.event?.desc || ''}" resumed.`);
+              refreshEvents();
+              break;
             case 'EVENT_ATTENDANCE_UPDATED':
-              showToast(`Event updated.`);
+              showToast('Attendance updated.');
               refreshEvents();
               break;
             case 'WELCOME_UPDATED':
@@ -153,9 +182,15 @@ export function useDashboard() {
               break;
             case 'USER_UPDATED':
             case 'STRIKE_ADDED':
+              showToast('Strike added.');
+              refreshUsers();
+              break;
             case 'STRIKE_REMOVED':
+              showToast('Strike removed.');
+              refreshUsers();
+              break;
             case 'ROLE_UPDATED':
-              showToast('User data updated.');
+              showToast('User roles updated.');
               refreshUsers();
               break;
             case 'LOG_UPDATED':
@@ -209,7 +244,7 @@ export function useDashboard() {
       if (interval) clearInterval(interval);
       if (socketRef.current) socketRef.current.disconnect();
     };
-  }, [navigate, refreshPing, refreshEvents, refreshWelcome, refreshActivity, refreshLogs]);
+  }, [navigate, refreshPing, refreshEvents, refreshWelcome, refreshActivity, refreshLogs, refreshUsers, refreshStrikeConfig, showToast]);
 
   const logout = useCallback(async () => {
     try { await api.post('/api/logout'); } finally { navigate('/login', { replace: true }); }

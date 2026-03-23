@@ -1,5 +1,13 @@
 [
   {
+    "id": "cc4f5a46-9b4f-4d08-af03-36ba44adb9a8",
+    "message": "API server listening on port 10000.",
+    "level": "info",
+    "source": "server",
+    "meta": {},
+    "timestamp": "2026-03-23T04:14:21.105Z"
+  },
+  {
     "id": "9df49829-6497-4a0c-b520-115a76b4af80",
     "message": "Enabled event \"Foundary\".",
     "level": "info",

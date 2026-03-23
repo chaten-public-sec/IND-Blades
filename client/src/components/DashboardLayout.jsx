@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { LayoutDashboard, Calendar, MessageSquare, Users, BarChart3, ScrollText, Shield, Sun, Moon, LogOut, Bell, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Calendar, MessageSquare, Users, BarChart3, ScrollText, Shield, Sun, Moon, LogOut, Bell, Menu, X, Zap } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from './ThemeProvider';
 import { DashboardContext } from '../lib/DashboardContext';
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { id: 'users', path: '/dashboard/users', label: 'Users', icon: Users },
   { id: 'activity', path: '/dashboard/activity', label: 'Activity', icon: BarChart3 },
   { id: 'logs', path: '/dashboard/logs', label: 'Logs', icon: ScrollText },
+  { id: 'strikes', path: '/dashboard/strikes', label: 'Strikes', icon: Zap },
   { id: 'autorole', path: '/dashboard/autorole', label: 'Auto Role', icon: Shield },
 ];
 

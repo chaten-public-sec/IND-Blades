@@ -29,12 +29,29 @@ function buildForm(event) {
   };
 }
 
+function formatDate(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function getStatusInfo(event) {
+  if (!event.enabled) return { label: 'Disabled', variant: 'danger' };
+  if (event.voting_closed) return { label: 'Completed', variant: 'default' };
+  return { label: 'Running', variant: 'success' };
+}
+
 export default function EventsPage() {
   const { events, channels, roles, roster, showToast, handleError } = useDashboardContext();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ ...emptyForm });
   const [selectedEvent, setSelectedEvent] = useState(null);
+
+  // Delete confirmation dialog
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const update = useCallback((field, value) => {
     setForm((f) => {
@@ -83,10 +100,21 @@ export default function EventsPage() {
     finally { setSaving(false); }
   };
 
-  const remove = async (id) => {
-    if (!confirm('Delete this event permanently?')) return;
-    try { await api.post('/api/events/delete', { id }); showToast('Event deleted.'); }
-    catch (err) { handleError(err, 'Failed to delete.'); }
+  const openDeleteConfirm = (event) => {
+    setDeleteTarget(event);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.post('/api/events/delete', { id: deleteTarget.id });
+      showToast(`Event "${deleteTarget.desc}" deleted.`);
+      setDeleteOpen(false);
+      setDeleteTarget(null);
+    } catch (err) { handleError(err, 'Failed to delete.'); }
+    finally { setDeleting(false); }
   };
 
   const toggle = async (event) => {
@@ -98,6 +126,9 @@ export default function EventsPage() {
     const u = roster.find(r => r.id === id);
     return u ? (u.name || u.username) : `User ${id.slice(-4)}`;
   };
+
+  // Dynamically update the detail dialog with latest data
+  const liveSelectedEvent = selectedEvent ? events.find(e => e.id === selectedEvent.id) || selectedEvent : null;
 
   return (
     <div className="space-y-6 animate-[fadeIn_0.3s_ease]">
@@ -116,49 +147,53 @@ export default function EventsPage() {
               <TableRow>
                 <TableHeaderCell>Event</TableHeaderCell>
                 <TableHeaderCell>Time</TableHeaderCell>
-                <TableHeaderCell>Route</TableHeaderCell>
+                <TableHeaderCell>Mode</TableHeaderCell>
                 <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell>Last Triggered</TableHeaderCell>
                 <TableHeaderCell>Attendance</TableHeaderCell>
                 <TableHeaderCell className="text-right">Actions</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {events.map((event) => (
-                <TableRow key={event.id}>
-                  <TableCell onClick={() => setSelectedEvent(event)} className="cursor-pointer hover:bg-white/5 transition-colors">
-                    <p className="font-semibold text-cyan-400 underline-offset-4 hover:underline">{event.desc}</p>
-                    <p className="mt-0.5 text-xs text-[var(--text-muted)]">{event.daily ? 'Daily' : 'Once'}</p>
-                  </TableCell>
-                  <TableCell className="font-mono">{event.time}</TableCell>
-                  <TableCell>
-                    <p className="capitalize">{event.target_type || 'channel'}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{event.delivery_mode === 'dm' ? 'DM' : 'Server'}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={event.enabled ? 'success' : 'danger'}>{event.enabled ? 'Active' : 'Paused'}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col items-center">
+              {events.map((event) => {
+                const status = getStatusInfo(event);
+                return (
+                  <TableRow key={event.id}>
+                    <TableCell onClick={() => setSelectedEvent(event)} className="cursor-pointer hover:bg-white/5 transition-colors">
+                      <p className="font-semibold text-cyan-400 underline-offset-4 hover:underline">{event.desc}</p>
+                      <p className="mt-0.5 text-xs text-[var(--text-muted)]">{event.daily ? 'Daily' : 'Once'}</p>
+                    </TableCell>
+                    <TableCell className="font-mono">{event.time}</TableCell>
+                    <TableCell>
+                      <Badge variant={event.delivery_mode === 'dm' ? 'warning' : 'default'}>
+                        {event.delivery_mode === 'dm' ? 'DM' : 'Server'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={status.variant}>{status.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-[var(--text-muted)]">
+                      {formatDate(event.last_reminded_date)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-green-400">✅ {event.attending?.length || 0}</span>
-                      </div>
-                      <div className="flex flex-col items-center">
                         <span className="text-xs font-bold text-red-400">❌ {event.not_attending?.length || 0}</span>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(event)}>Edit</Button>
-                      <Button size="sm" variant="ghost" onClick={() => toggle(event)}>{event.enabled ? 'Pause' : 'Resume'}</Button>
-                      <Button size="sm" variant="danger" onClick={() => remove(event.id)}>Delete</Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(event)}>Edit</Button>
+                        <Button size="sm" variant="ghost" onClick={() => toggle(event)}>{event.enabled ? 'Pause' : 'Resume'}</Button>
+                        <Button size="sm" variant="danger" onClick={() => openDeleteConfirm(event)}>Delete</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {events.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-12 text-center text-[var(--text-muted)]">No events yet. Create one to get started.</TableCell>
+                  <TableCell colSpan={7} className="py-12 text-center text-[var(--text-muted)]">No events yet. Create one to get started.</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -167,21 +202,33 @@ export default function EventsPage() {
       </Card>
 
       {/* Event Detail Dialog */}
-      <Dialog open={Boolean(selectedEvent)} onOpenChange={(open) => !open && setSelectedEvent(null)}>
+      <Dialog open={Boolean(liveSelectedEvent)} onOpenChange={(open) => !open && setSelectedEvent(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{selectedEvent?.desc}</DialogTitle>
+            <DialogTitle>{liveSelectedEvent?.desc}</DialogTitle>
             <DialogDescription>Real-time attendance details</DialogDescription>
           </DialogHeader>
           <DialogBody>
+            {/* Summary Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="surface-soft rounded-xl p-4 text-center">
+                <p className="text-3xl font-bold text-green-400">{liveSelectedEvent?.attending?.length || 0}</p>
+                <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">Attending</p>
+              </div>
+              <div className="surface-soft rounded-xl p-4 text-center">
+                <p className="text-3xl font-bold text-red-400">{liveSelectedEvent?.not_attending?.length || 0}</p>
+                <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">Not Attending</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <h4 className="font-bold text-green-400">✅ Attending ({selectedEvent?.attending?.length || 0})</h4>
+                  <h4 className="font-bold text-green-400">✅ Attending ({liveSelectedEvent?.attending?.length || 0})</h4>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
-                  {selectedEvent?.attending?.length > 0 ? (
-                    selectedEvent.attending.map(id => (
+                  {liveSelectedEvent?.attending?.length > 0 ? (
+                    liveSelectedEvent.attending.map(id => (
                       <div key={id} className="surface-soft rounded-lg p-2 text-sm flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-green-400" />
                         {getUserName(id)}
@@ -195,11 +242,11 @@ export default function EventsPage() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <h4 className="font-bold text-red-400">❌ Not Attending ({selectedEvent?.not_attending?.length || 0})</h4>
+                  <h4 className="font-bold text-red-400">❌ Not Attending ({liveSelectedEvent?.not_attending?.length || 0})</h4>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
-                  {selectedEvent?.not_attending?.length > 0 ? (
-                    selectedEvent.not_attending.map(id => (
+                  {liveSelectedEvent?.not_attending?.length > 0 ? (
+                    liveSelectedEvent.not_attending.map(id => (
                       <div key={id} className="surface-soft rounded-lg p-2 text-sm flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-red-400" />
                         {getUserName(id)}
@@ -218,7 +265,29 @@ export default function EventsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Event Dialog */}
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Event</DialogTitle>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            {deleteTarget && (
+              <div className="surface-soft rounded-xl p-4">
+                <p className="font-semibold">{deleteTarget.desc}</p>
+                <p className="text-sm text-[var(--text-muted)] mt-1">Time: {deleteTarget.time} · {deleteTarget.daily ? 'Daily' : 'Once'}</p>
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setDeleteOpen(false); setDeleteTarget(null); }}>Cancel</Button>
+            <Button variant="danger" onClick={confirmDelete} loading={deleting}>Delete Permanently</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Event Form Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>

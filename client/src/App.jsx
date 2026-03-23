@@ -10,6 +10,7 @@ import ActivityPage from './pages/ActivityPage';
 import LogsPage from './pages/LogsPage';
 import AutoRolePage from './pages/AutoRolePage';
 import NotificationsPage from './pages/NotificationsPage';
+import StrikePage from './pages/StrikePage';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="users" element={<UsersPage />} />
             <Route path="activity" element={<ActivityPage />} />
             <Route path="logs" element={<LogsPage />} />
+            <Route path="strikes" element={<StrikePage />} />
             <Route path="autorole" element={<AutoRolePage />} />
             <Route path="notifications" element={<NotificationsPage />} />
           </Route>
