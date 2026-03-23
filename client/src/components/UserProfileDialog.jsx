@@ -65,7 +65,6 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
     setAddingStrike(true);
     try {
       await api.post('/api/strikes/add', { user_id: user.id, reason: reason.trim() });
-      showToast('Strike issued successfully.', 'success');
       setAddOpen(false);
       setReason('');
     } catch (err) { handleError(err, 'Failed to add strike.'); }
@@ -76,7 +75,6 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
     setRemovingIdx(index);
     try {
       await api.post('/api/strikes/remove', { user_id: user.id, index });
-      showToast('Strike removed.');
     } catch (err) { handleError(err, 'Failed to remove strike.'); }
     finally { setRemovingIdx(null); }
   }, [user.id, showToast, handleError]);
@@ -177,7 +175,7 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 w-7 p-0 text-red-500/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-7 w-7 p-0 text-red-500/70 opacity-100"
                             onClick={() => removeStrike(i)}
                             loading={removingIdx === i}
                           >

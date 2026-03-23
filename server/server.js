@@ -921,7 +921,7 @@ const io = new Server(server, {
   transports: ['websocket', 'polling'] // Both for reliability
 });
 const port = process.env.PORT || 3001;
-const dashboardKey = getEnv('DASHBOARD_KEY', '123456');
+const dashboardKey = getEnv('DASHBOARD_KEY', 'Blades@123');
 const sessionSecret = getEnv('SESSION_SECRET', dashboardKey);
 
 app.use(cors({

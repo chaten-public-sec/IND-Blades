@@ -104,7 +104,6 @@ export default function StrikePage() {
     setAddSaving(true);
     try {
       await api.post('/api/strikes/add', { user_id: addUserId, reason: addReason.trim() });
-      showToast('Strike issued successfully.', 'success');
       setAddOpen(false);
       setAddUserId('');
       setAddReason('');
@@ -117,7 +116,6 @@ export default function StrikePage() {
     setRemoveSaving(true);
     try {
       await api.post('/api/strikes/remove', { user_id: removeTarget.userId, index: removeTarget.index });
-      showToast('Strike removed.', 'info');
       setRemoveOpen(false);
       setRemoveTarget(null);
       if (detailUser && detailUser.id === removeTarget.userId) {
@@ -303,7 +301,7 @@ export default function StrikePage() {
                          <Button
                            size="sm"
                            variant="ghost"
-                           className="h-8 w-8 p-0 text-red-500/70 hover:text-red-500 hover:bg-red-500/10"
+                           className="h-8 w-8 p-0 text-red-500/70 hover:text-red-500 hover:bg-red-500/10 opacity-100"
                            onClick={() => {
                              if (user.strikes?.length > 0) {
                                openRemoveDialog(user.id, user.strikes.length - 1, user.strikes[user.strikes.length - 1].reason);
@@ -471,7 +469,7 @@ export default function StrikePage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-9 w-9 p-0 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/5 hover:bg-red-500/20"
+                            className="h-9 w-9 p-0 text-red-200 bg-red-500/10 opacity-100"
                             onClick={() => openRemoveDialog(currentDetailUser.id, i, strike.reason)}
                           >
                             <Trash2 className="h-5 w-5" />
@@ -495,3 +493,4 @@ export default function StrikePage() {
     </div>
   );
 }
+

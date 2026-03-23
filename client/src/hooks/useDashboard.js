@@ -158,23 +158,23 @@ export function useDashboard() {
 
           switch (data.type) {
             case 'EVENT_CREATED':
-              showToast(`Event "${data.payload?.event?.desc || ''}" created.`);
+              if (data.payload?.event?.desc) showToast(`Event "${data.payload.event.desc}" created.`);
               refreshEvents();
               break;
             case 'EVENT_UPDATED':
-              showToast(`Event "${data.payload?.event?.desc || ''}" updated.`);
+              if (data.payload?.event?.desc) showToast(`Event "${data.payload.event.desc}" updated.`);
               refreshEvents();
               break;
             case 'EVENT_DELETED':
-              showToast(`Event "${data.payload?.name || ''}" deleted.`);
+              if (data.payload?.name) showToast(`Event "${data.payload.name}" deleted.`);
               refreshEvents();
               break;
             case 'EVENT_PAUSED':
-              showToast(`Event "${data.payload?.event?.desc || ''}" paused.`);
+              if (data.payload?.event?.desc) showToast(`Event "${data.payload.event.desc}" paused.`);
               refreshEvents();
               break;
             case 'EVENT_RESUMED':
-              showToast(`Event "${data.payload?.event?.desc || ''}" resumed.`);
+              if (data.payload?.event?.desc) showToast(`Event "${data.payload.event.desc}" resumed.`);
               refreshEvents();
               break;
             case 'EVENT_ATTENDANCE_UPDATED':
