@@ -9,11 +9,11 @@ export function CardHeader({ className, ...props }) {
 }
 
 export function CardTitle({ className, ...props }) {
-  return <h3 className={cn('text-lg font-semibold text-white', className)} {...props} />;
+  return <h3 className={cn('text-lg font-semibold text-[var(--text-main)]', className)} {...props} />;
 }
 
 export function CardDescription({ className, ...props }) {
-  return <p className={cn('text-sm text-slate-400', className)} {...props} />;
+  return <p className={cn('text-sm text-[var(--text-muted)]', className)} {...props} />;
 }
 
 export function CardContent({ className, ...props }) {

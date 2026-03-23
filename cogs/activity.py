@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 import time
-from utils.storage import load_data, save_data
+from utils.storage import load_data, save_data, get_activity_config
 
 def get_activity_data():
     data = load_data()
@@ -70,10 +70,17 @@ class Activity(commands.Cog):
         uid = member.id
         now = time.time()
         
+        # Exclude AFK channel - use config or guild default
+        config = get_activity_config()
+        afk_id = config.get("afk_channel_id")
+        if not afk_id and member.guild.afk_channel:
+            afk_id = member.guild.afk_channel.id
+        afk_id = int(afk_id) if afk_id else 0
+        after_ch_id = getattr(after.channel, "id", 0) or 0
         # We define active state as not afk and not self_deaf
         is_valid_after = (after.channel is not None and 
                           not after.self_deaf and not after.deaf and 
-                          getattr(after.channel, "id", 0) != getattr(member.guild.afk_channel, "id", 0))
+                          after_ch_id != afk_id)
         
         # They left or changed to invalid state
         if uid in self.active_voice and (not is_valid_after or before.channel != after.channel):

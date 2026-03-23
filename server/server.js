@@ -14,7 +14,7 @@ const LOGS_PATH = path.join(DATA_DIR, 'logs.json');
 const COMMANDS_PATH = path.join(DATA_DIR, 'commands.json');
 const LEGACY_WELCOME_PATH = path.join(ROOT_DIR, 'welcome.json');
 const ENV_PATH = path.join(ROOT_DIR, '.env');
-const RESERVED_KEYS = new Set(['__activity__', '__welcome__', '__logs__', '__autorole__', '__notifications__', '__vc_config__', '__strikes__', '__strikes_config__']);
+const RESERVED_KEYS = new Set(['__activity__', '__activity_config__', '__welcome__', '__logs__', '__autorole__', '__notifications__', '__vc_config__', '__strikes__', '__strikes_config__', '__discord_logs__']);
 const SNOWFLAKE_FIELD_PATTERN = /(:\s*)(\d{15,})(?=\s*[,}\]])/g;
 const SNOWFLAKE_STRING_PATTERN = /(:\s*)"(\d{15,})"(?=\s*[,}\]])/g;
 
@@ -195,6 +195,52 @@ function normalizeLogSettings(value) {
   };
 }
 
+const DISCORD_LOG_CATEGORIES = ['moderation', 'voice', 'message'];
+
+function normalizeDiscordLogsConfig(value) {
+  const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const defaultChannel = getDefaultModerationLogChannelId() || getDefaultEventLogChannelId();
+  const categories = input.categories && typeof input.categories === 'object' ? input.categories : {};
+  const result = { enabled: parseBoolean(input.enabled, false), categories: {} };
+  for (const key of DISCORD_LOG_CATEGORIES) {
+    const cat = categories[key];
+    const channelId = cat && typeof cat === 'object' ? parseSnowflake(cat.channel_id) : null;
+    result.categories[key] = {
+      enabled: cat && typeof cat === 'object' ? parseBoolean(cat.enabled, false) : false,
+      channel_id: channelId || (key === 'moderation' ? defaultChannel : null)
+    };
+  }
+  return result;
+}
+
+function getDiscordLogsConfig(store = readStore()) {
+  return normalizeDiscordLogsConfig(store.__discord_logs__);
+}
+
+function setDiscordLogsConfig(partial) {
+  const store = readStore();
+  const current = getDiscordLogsConfig(store);
+  let next = { ...current };
+  if (Object.prototype.hasOwnProperty.call(partial || {}, 'enabled')) {
+    next.enabled = parseBoolean(partial.enabled, false);
+  }
+  if (partial?.categories && typeof partial.categories === 'object') {
+    next.categories = { ...current.categories };
+    for (const key of DISCORD_LOG_CATEGORIES) {
+      if (partial.categories[key]) {
+        const cat = partial.categories[key];
+        next.categories[key] = {
+          enabled: parseBoolean(cat.enabled, false),
+          channel_id: parseSnowflake(cat.channel_id) || current.categories[key]?.channel_id || null
+        };
+      }
+    }
+  }
+  store.__discord_logs__ = next;
+  writeStore(store);
+  return next;
+}
+
 function normalizeAutoRoleConfig(value) {
   const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   return {
@@ -203,8 +249,7 @@ function normalizeAutoRoleConfig(value) {
       ? input.bindings
           .filter((b) => b && typeof b === 'object' && b.role_a && b.role_b)
           .map((b) => ({ role_a: String(b.role_a), role_b: String(b.role_b) }))
-      : [],
-    strike_mapping: input.strike_mapping && typeof input.strike_mapping === 'object' ? input.strike_mapping : {}
+      : []
   };
 }
 
@@ -226,15 +271,29 @@ function normalizeStrikeData(value) {
 function getStrikeConfig() {
   const store = readStore();
   const config = store.__strikes_config__ || {};
+  const autorole = store.__autorole__ || {};
   return {
-    expiry_days: Number(config.expiry_days || 7)
+    expiry_days: Number(config.expiry_days || 7),
+    strike_mapping: config.strike_mapping && typeof config.strike_mapping === 'object'
+      ? config.strike_mapping
+      : (autorole.strike_mapping && typeof autorole.strike_mapping === 'object' ? autorole.strike_mapping : {})
   };
 }
 
 function setStrikeConfig(partial) {
   const store = readStore();
   const current = getStrikeConfig();
-  store.__strikes_config__ = { ...current, ...partial };
+  const next = { ...current, ...partial };
+  if (partial?.strike_mapping !== undefined) {
+    next.strike_mapping = partial.strike_mapping && typeof partial.strike_mapping === 'object'
+      ? Object.fromEntries(
+          Object.entries(partial.strike_mapping)
+            .filter(([, v]) => v != null && v !== '')
+            .map(([k, v]) => [String(k), String(v)])
+        )
+      : {};
+  }
+  store.__strikes_config__ = next;
   writeStore(store);
   return store.__strikes_config__;
 }
@@ -293,10 +352,16 @@ function ensureDataFiles() {
   const legacyWelcome = readSnowflakeJson(LEGACY_WELCOME_PATH, {});
   store.__welcome__ = normalizeWelcomeConfig(store.__welcome__ ?? legacyWelcome);
   store.__logs__ = normalizeLogSettings(store.__logs__);
+  if (!store.__discord_logs__ || typeof store.__discord_logs__.categories !== 'object') {
+    store.__discord_logs__ = normalizeDiscordLogsConfig(store.__discord_logs__);
+  }
   store.__autorole__ = normalizeAutoRoleConfig(store.__autorole__);
   store.__notifications__ = normalizeNotificationConfig(store.__notifications__);
   if (!store.__activity__ || !store.__activity__.last_reset) {
     store.__activity__ = { users: {}, last_reset: Math.floor(Date.now() / 1000) };
+  }
+  if (!store.__activity_config__ || typeof store.__activity_config__ !== 'object') {
+    store.__activity_config__ = { afk_channel_id: null };
   }
   writeStore(store);
   syncLegacyWelcome(store.__welcome__);
@@ -382,6 +447,23 @@ function resetActivityStats() {
   return next;
 }
 
+function getActivityConfig(store = readStore()) {
+  const c = store.__activity_config__ || {};
+  return { afk_channel_id: parseSnowflake(c.afk_channel_id) || null };
+}
+
+function setActivityConfig(partial) {
+  const store = readStore();
+  const current = getActivityConfig(store);
+  const next = { ...current, ...partial };
+  if (partial?.afk_channel_id !== undefined) {
+    next.afk_channel_id = parseSnowflake(partial.afk_channel_id) || null;
+  }
+  store.__activity_config__ = next;
+  writeStore(store);
+  return next;
+}
+
 function inferTargetType(item) {
   if (item.target_type === 'channel' || item.target_type === 'role' || item.target_type === 'user') {
     return item.target_type;
@@ -414,7 +496,11 @@ function normalizeEvent(id, value) {
     channel_id: parseSnowflake(item.channel_id),
     creator_id: parseSnowflake(item.creator_id),
     attending: Array.isArray(item.attending) ? item.attending : (Array.isArray(item.going) ? item.going : []),
-    not_attending: Array.isArray(item.not_attending) ? item.not_attending : (Array.isArray(item.not_sure) ? item.not_sure : []),
+    not_attending: Array.isArray(item.not_attending)
+      ? item.not_attending.map((n) => typeof n === 'object' && n?.user_id
+          ? { user_id: String(n.user_id), reason: String(n.reason || 'No reason'), timestamp: n.timestamp || null }
+          : { user_id: String(n), reason: 'No reason', timestamp: null })
+      : (Array.isArray(item.not_sure) ? item.not_sure.map((n) => typeof n === 'object' && n?.user_id ? n : { user_id: String(n), reason: 'No reason', timestamp: null }) : []),
     vote_message_id: parseSnowflake(item.vote_message_id),
     vote_message_map:
       item.vote_message_map && typeof item.vote_message_map === 'object' && !Array.isArray(item.vote_message_map)
@@ -423,7 +509,8 @@ function normalizeEvent(id, value) {
     last_vote_date: item.last_vote_date || null,
     last_reminded_date: item.last_reminded_date || null,
     event_date: item.event_date || null,
-    voting_closed: parseBoolean(item.voting_closed, false)
+    voting_closed: parseBoolean(item.voting_closed, false),
+    vc_channel_id: parseSnowflake(item.vc_channel_id)
   };
 }
 
@@ -553,7 +640,8 @@ function buildEventRecord(body, existingEvent) {
     last_vote_date: current?.last_vote_date || null,
     last_reminded_date: current?.last_reminded_date || null,
     event_date: current?.event_date || null,
-    voting_closed: current?.voting_closed || false
+    voting_closed: current?.voting_closed || false,
+    vc_channel_id: parseSnowflake(body.vc_channel_id ?? current?.vc_channel_id)
   };
 
   if (current && record.time !== current.time) {
@@ -602,10 +690,11 @@ async function getChannels() {
   const channels = await fetchDiscordJson('channels');
   cachedChannels = Array.isArray(channels)
     ? channels
-        .filter((channel) => channel && [0, 5].includes(channel.type))
+        .filter((channel) => channel && [0, 2, 5].includes(channel.type))
         .map((channel) => ({
           id: String(channel.id),
-          name: channel.name
+          name: channel.name,
+          type: channel.type
         }))
         .sort((left, right) => left.name.localeCompare(right.name))
     : [];
@@ -968,7 +1057,9 @@ app.get('/api/dashboard/bootstrap', async (req, res) => {
     events: listEvents(store),
     welcome: getWelcomeConfig(store),
     log_settings: getLogSettings(store),
+    discord_logs: getDiscordLogsConfig(store),
     activity: getActivityStats(store),
+    activity_config: getActivityConfig(store),
     autorole: getAutoRoleConfig(store),
     notifications: getNotificationConfig(store),
     strike_config: getStrikeConfig(),
@@ -1176,6 +1267,17 @@ app.get('/api/log-settings', (req, res) => {
   res.json(getLogSettings());
 });
 
+app.get('/api/discord-logs', (req, res) => {
+  res.json(getDiscordLogsConfig());
+});
+
+app.post('/api/discord-logs', (req, res) => {
+  const config = setDiscordLogsConfig(req.body || {});
+  emitSystemUpdate('DISCORD_LOGS_UPDATED', { config });
+  appendLog('Updated Discord log settings.', 'info', 'settings');
+  res.json({ success: true, config });
+});
+
 app.post('/api/log-settings', (req, res) => {
   const partial = {};
   if (Object.prototype.hasOwnProperty.call(req.body || {}, 'enabled')) {
@@ -1198,6 +1300,17 @@ app.post('/api/log-settings', (req, res) => {
 
 app.get('/api/activity/stats', (req, res) => {
   res.json(getActivityStats());
+});
+
+app.get('/api/activity/config', (req, res) => {
+  res.json(getActivityConfig());
+});
+
+app.post('/api/activity/config', (req, res) => {
+  const config = setActivityConfig(req.body || {});
+  emitSystemUpdate('ACTIVITY_CONFIG_UPDATED', { config });
+  appendLog('Updated activity config (AFK channel).', 'info', 'activity');
+  res.json({ success: true, config });
 });
 
 app.post('/api/activity/reset', (req, res) => {

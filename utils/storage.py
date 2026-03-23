@@ -31,3 +31,28 @@ def get_log_settings():
         "event_channel_id": settings.get("event_channel_id"),
         "system_channel_id": settings.get("system_channel_id"),
     }
+
+
+def get_activity_config():
+    data = load_data()
+    c = data.get("__activity_config__", {})
+    return {"afk_channel_id": c.get("afk_channel_id")}
+
+
+def get_discord_log_settings():
+    """New multi-category Discord logs. Bot uses this when __discord_logs__ exists."""
+    data = load_data()
+    dl = data.get("__discord_logs__", {})
+    if not dl or not isinstance(dl.get("categories"), dict):
+        return None
+    return {
+        "enabled": bool(dl.get("enabled", False)),
+        "categories": {
+            k: {
+                "enabled": bool(v.get("enabled", False)),
+                "channel_id": v.get("channel_id"),
+            }
+            for k, v in dl.get("categories", {}).items()
+            if isinstance(v, dict)
+        },
+    }

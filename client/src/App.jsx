@@ -8,6 +8,7 @@ import WelcomePage from './pages/WelcomePage';
 import UsersPage from './pages/UsersPage';
 import ActivityPage from './pages/ActivityPage';
 import LogsPage from './pages/LogsPage';
+import DiscordLogsPage from './pages/DiscordLogsPage';
 import AutoRolePage from './pages/AutoRolePage';
 import NotificationsPage from './pages/NotificationsPage';
 import StrikePage from './pages/StrikePage';
@@ -25,6 +26,7 @@ function App() {
             <Route path="users" element={<UsersPage />} />
             <Route path="activity" element={<ActivityPage />} />
             <Route path="logs" element={<LogsPage />} />
+            <Route path="discord-logs" element={<DiscordLogsPage />} />
             <Route path="strikes" element={<StrikePage />} />
             <Route path="autorole" element={<AutoRolePage />} />
             <Route path="notifications" element={<NotificationsPage />} />

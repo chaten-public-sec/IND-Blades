@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { SelectField } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '../components/ui/dialog';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/table';
@@ -26,7 +27,7 @@ function getTimeLeft(expiresAt) {
 const PAGE_SIZE = 15;
 
 export default function StrikePage() {
-  const { roster, roles, showToast, handleError, refreshUsers } = useDashboardContext();
+  const { roster, roles, strikeConfig, setStrikeConfig, showToast, handleError } = useDashboardContext();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
 
@@ -43,6 +44,33 @@ export default function StrikePage() {
 
   // User Detail Dialog
   const [detailUser, setDetailUser] = useState(null);
+
+  const [expiryDays, setExpiryDays] = useState(strikeConfig.expiry_days ?? 7);
+  const [strikeMapping, setStrikeMapping] = useState(strikeConfig.strike_mapping ?? {});
+  const [configSaving, setConfigSaving] = useState(false);
+
+  useEffect(() => {
+    setExpiryDays(strikeConfig.expiry_days ?? 7);
+    setStrikeMapping(strikeConfig.strike_mapping ?? {});
+  }, [strikeConfig]);
+
+  const updateStrikeMapping = (count, roleId) => setStrikeMapping((p) => ({ ...p, [count]: roleId }));
+
+  const saveConfig = async () => {
+    setConfigSaving(true);
+    try {
+      const r = await api.post('/api/strikes/config', {
+        expiry_days: Number(expiryDays),
+        strike_mapping: strikeMapping,
+      });
+      setStrikeConfig(r.data?.config || strikeConfig);
+      showToast('Strike config saved.');
+    } catch (err) {
+      handleError(err, 'Failed to save config.');
+    } finally {
+      setConfigSaving(false);
+    }
+  };
 
   // Filter users that have strikes or match search
   const usersWithStrikes = useMemo(() => {
@@ -129,6 +157,46 @@ export default function StrikePage() {
           <Button onClick={() => setAddOpen(true)}>+ Add Strike</Button>
         </div>
       </div>
+
+      {/* Strike Config: Expiry + Role Mapping */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h3 className="font-semibold text-[var(--text-main)]">Strike Expiry</h3>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">Days until a strike expires.</p>
+              <div className="mt-3 flex items-center gap-3">
+                <input
+                  type="number"
+                  min="1"
+                  value={expiryDays}
+                  onChange={(e) => setExpiryDays(Number(e.target.value))}
+                  className="surface-soft h-11 w-24 rounded-2xl px-4 text-sm text-[var(--text-main)]"
+                />
+                <span className="text-sm text-[var(--text-muted)]">Days</span>
+              </div>
+            </div>
+            <div className="flex-1 lg:max-w-md">
+              <h3 className="font-semibold text-[var(--text-main)]">Strike Role Mapping</h3>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">Roles assigned by strike count. Roles stack; removed on strike removal.</p>
+              <div className="mt-3 space-y-3">
+                {[1, 2, 3].map((count) => (
+                  <div key={count} className="flex items-center gap-4">
+                    <span className="w-20 text-sm font-bold text-rose-600 dark:text-red-400">{count} Strike{count > 1 ? 's' : ''}</span>
+                    <SelectField value={strikeMapping[count] || ''} onChange={(e) => updateStrikeMapping(count, e.target.value)}>
+                      <option value="">No role</option>
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.id}>@{r.name}</option>
+                      ))}
+                    </SelectField>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Button onClick={saveConfig} loading={configSaving}>Save Config</Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats row */}
       <div className="grid gap-4 sm:grid-cols-3">

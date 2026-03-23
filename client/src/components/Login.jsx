@@ -86,9 +86,9 @@ export default function Login() {
                 IND Blades
               </div>
               <div className="space-y-2">
-                <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Login</p>
-                <h2 className="text-4xl font-semibold text-white">Welcome back.</h2>
-                <p className="max-w-md text-sm leading-7 text-slate-400">
+                <p className="text-sm uppercase tracking-[0.28em] text-[var(--text-muted)]">Login</p>
+                <h2 className="text-4xl font-semibold text-[var(--text-main)]">Welcome back.</h2>
+                <p className="max-w-md text-sm leading-7 text-[var(--text-muted)]">
                   Enter the dashboard key to open your workspace. Everything else stays ready in the background.
                 </p>
               </div>
@@ -96,11 +96,11 @@ export default function Login() {
 
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
-                <label htmlFor="dashboard-key" className="text-sm font-semibold text-slate-200">
+                <label htmlFor="dashboard-key" className="text-sm font-semibold text-[var(--text-main)]">
                   Dashboard Key
                 </label>
-                <div className="surface-soft flex h-14 items-center gap-3 rounded-[22px] px-4 transition focus-within:border-cyan-300/30 focus-within:bg-slate-950/90">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/6 text-cyan-200">
+                <div className="surface-soft flex h-14 items-center gap-3 rounded-[22px] px-4 transition focus-within:border-cyan-500/40">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-500/20 text-cyan-600 dark:text-cyan-200">
                     <KeyRound className="h-4 w-4" />
                   </div>
                   <input
@@ -110,7 +110,7 @@ export default function Login() {
                     value={key}
                     onChange={(event) => setKey(event.target.value)}
                     placeholder="Enter your dashboard key"
-                    className="h-full w-full bg-transparent text-base text-white placeholder:text-slate-500"
+                    className="h-full w-full bg-transparent text-base text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
                   />
                 </div>
               </div>
@@ -127,9 +127,9 @@ export default function Login() {
               </Button>
             </form>
 
-            <div className="mt-8 rounded-[24px] border border-white/8 bg-white/4 px-5 py-4">
-              <p className="text-sm font-semibold text-white">Secure access</p>
-              <p className="mt-1 text-sm leading-7 text-slate-400">
+            <div className="mt-8 rounded-[24px] border border-[var(--border)] bg-black/5 dark:bg-white/4 px-5 py-4">
+              <p className="text-sm font-semibold text-[var(--text-main)]">Secure access</p>
+              <p className="mt-1 text-sm leading-7 text-[var(--text-muted)]">
                 Sessions stay in the browser, and the dashboard reconnects to live updates automatically after login.
               </p>
             </div>

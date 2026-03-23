@@ -11,7 +11,7 @@ import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } fro
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 
-const emptyForm = { id: '', name: '', hour: '18', minute: '00', daily: false, mode: 'server', targetType: 'channel', targetId: '', mentionRoleId: '' };
+const emptyForm = { id: '', name: '', hour: '18', minute: '00', daily: false, mode: 'server', targetType: 'channel', targetId: '', mentionRoleId: '', vcChannelId: '' };
 
 function buildForm(event) {
   if (!event) return { ...emptyForm };
@@ -26,6 +26,7 @@ function buildForm(event) {
     targetType: event.target_type || (event.delivery_mode === 'dm' ? 'user' : 'channel'),
     targetId: event.target_id || '',
     mentionRoleId: event.mention_role_id || '',
+    vcChannelId: event.vc_channel_id || '',
   };
 }
 
@@ -52,6 +53,8 @@ export default function EventsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
+  const [reasonTarget, setReasonTarget] = useState(null);
 
   const update = useCallback((field, value) => {
     setForm((f) => {
@@ -87,6 +90,7 @@ export default function EventsPage() {
         target_type: form.targetType,
         target_id: form.targetId,
         mention_role_id: form.mentionRoleId || null,
+        vc_channel_id: form.vcChannelId || null,
       };
       if (form.id) {
         await api.post('/api/events/update', payload);
@@ -223,8 +227,8 @@ export default function EventsPage() {
 
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <h4 className="font-bold text-green-400">✅ Attending ({liveSelectedEvent?.attending?.length || 0})</h4>
+                <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+                  <h4 className="font-bold text-green-600 dark:text-green-400">✅ Attending ({liveSelectedEvent?.attending?.length || 0})</h4>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
                   {liveSelectedEvent?.attending?.length > 0 ? (
@@ -241,17 +245,26 @@ export default function EventsPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <h4 className="font-bold text-red-400">❌ Not Attending ({liveSelectedEvent?.not_attending?.length || 0})</h4>
+                <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+                  <h4 className="font-bold text-red-600 dark:text-red-400">❌ Not Sure ({liveSelectedEvent?.not_attending?.length || 0})</h4>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
                   {liveSelectedEvent?.not_attending?.length > 0 ? (
-                    liveSelectedEvent.not_attending.map(id => (
-                      <div key={id} className="surface-soft rounded-lg p-2 text-sm flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-red-400" />
-                        {getUserName(id)}
-                      </div>
-                    ))
+                    liveSelectedEvent.not_attending.map((item, i) => {
+                      const entry = typeof item === 'object' && item?.user_id ? item : { user_id: item, reason: 'No reason', timestamp: null };
+                      const uid = entry.user_id;
+                      return (
+                        <div key={uid + i} className="surface-soft rounded-lg p-2 text-sm flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-red-400" />
+                            {getUserName(uid)}
+                          </div>
+                          <Button size="sm" variant="ghost" onClick={() => { setReasonTarget(entry); setReasonDialogOpen(true); }}>
+                            View Reason
+                          </Button>
+                        </div>
+                      );
+                    })
                   ) : (
                     <p className="text-xs text-[var(--text-muted)] italic">No one yet</p>
                   )}
@@ -261,6 +274,27 @@ export default function EventsPage() {
           </DialogBody>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setSelectedEvent(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Reason Dialog */}
+      <Dialog open={reasonDialogOpen} onOpenChange={setReasonDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Not Sure Reason</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {reasonTarget && (
+              <div className="space-y-3">
+                <p><strong>User:</strong> {getUserName(reasonTarget.user_id)}</p>
+                <p><strong>Reason:</strong> {reasonTarget.reason || 'No reason provided'}</p>
+                <p><strong>Timestamp:</strong> {reasonTarget.timestamp ? formatDate(reasonTarget.timestamp) : '—'}</p>
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setReasonDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -380,6 +414,16 @@ export default function EventsPage() {
                   </SelectField>
                 </div>
               )}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[var(--text-muted)]">Event VC Channel</label>
+                <SelectField value={form.vcChannelId} onChange={(e) => update('vcChannelId', e.target.value)}>
+                  <option value="">None</option>
+                  {((channels || []).filter((c) => c.type === 2).length ? (channels || []).filter((c) => c.type === 2) : (channels || [])).map((c) => (
+                    <option key={c.id} value={c.id}>#{c.name}</option>
+                  ))}
+                </SelectField>
+                <p className="text-xs text-[var(--text-muted)]">YES attendees get a Join VC button. Optional.</p>
+              </div>
             </div>
           </DialogBody>
           <DialogFooter>

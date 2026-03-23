@@ -12,10 +12,11 @@ DATA_PATH = os.path.join("data", "reminders.json")
 def get_autorole_config():
     data = load_data()
     config = data.get("__autorole__", {})
+    strikes_config = data.get("__strikes_config__", {})
     return {
         "join_role_id": config.get("join_role_id"),
         "bindings": config.get("bindings", []),
-        "strike_mapping": config.get("strike_mapping", {}),
+        "strike_mapping": strikes_config.get("strike_mapping", {}) or config.get("strike_mapping", {}),
     }
 
 

@@ -24,6 +24,20 @@ def normalize_id(value):
     return str(value)
 
 
+def _normalize_not_attending(items):
+    result = []
+    for item in items if items else []:
+        if isinstance(item, dict) and item.get("user_id"):
+            result.append({
+                "user_id": str(item["user_id"]),
+                "reason": str(item.get("reason") or "No reason"),
+                "timestamp": item.get("timestamp") or discord.utils.utcnow().isoformat(),
+            })
+        elif item is not None:
+            result.append({"user_id": str(item), "reason": "No reason", "timestamp": discord.utils.utcnow().isoformat()})
+    return result
+
+
 def load_reminders():
     data = load_data()
     reminders = {}
@@ -51,7 +65,7 @@ def load_reminders():
             "desc": str(value.get("desc") or value.get("name") or "Untitled Event"),
             "daily": bool(value.get("daily", False)),
             "attending": [str(user_id) for user_id in (value.get("attending") or value.get("going") or []) if user_id is not None],
-            "not_attending": [str(user_id) for user_id in (value.get("not_attending") or value.get("not_sure") or []) if user_id is not None],
+            "not_attending": _normalize_not_attending(value.get("not_attending") or value.get("not_sure") or []),
             "vote_message_id": normalize_id(value.get("vote_message_id")),
             "vote_message_map": {
                 str(user_id): str(message_id)
@@ -63,6 +77,7 @@ def load_reminders():
             "event_date": value.get("event_date"),
             "voting_closed": bool(value.get("voting_closed", False)),
             "channel_id": normalize_id(value.get("channel_id")),
+            "vc_channel_id": normalize_id(value.get("vc_channel_id")),
             "mention_role_id": normalize_id(value.get("mention_role_id")),
             "enabled": bool(value.get("enabled", True)),
             "delivery_mode": delivery_mode,
@@ -89,6 +104,45 @@ def get_gif_file():
     if os.path.exists(GIF_PATH):
         return discord.File(GIF_PATH, filename="ind-blades.gif")
     return None
+
+
+class NotSureReasonModal(discord.ui.Modal, title="Not Attending - Reason"):
+    def __init__(self, cog, reminder_id):
+        super().__init__()
+        self.cog = cog
+        self.reminder_id = reminder_id
+        self.reason_input = discord.ui.TextInput(
+            label="Reason",
+            placeholder="Why can't you attend?",
+            max_length=500,
+            required=True,
+            style=discord.TextStyle.paragraph,
+        )
+        self.add_item(self.reason_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await self.cog.sync_reminders()
+        reminder = self.cog.reminders.get(self.reminder_id)
+        if not reminder or reminder.get("voting_closed"):
+            await interaction.response.send_message("Voting is closed.", ephemeral=True)
+            return
+        user_id = str(interaction.user.id)
+        attending = set(reminder.get("attending", []))
+        not_attending = list(reminder.get("not_attending", []))
+        not_attending_user_ids = {n["user_id"] if isinstance(n, dict) else n for n in not_attending}
+        attending.discard(user_id)
+        not_attending_user_ids.add(user_id)
+        not_attending = [n for n in not_attending if (n["user_id"] if isinstance(n, dict) else n) != user_id]
+        not_attending.append({
+            "user_id": user_id,
+            "reason": str(self.reason_input.value).strip() or "No reason",
+            "timestamp": discord.utils.utcnow().isoformat(),
+        })
+        reminder["attending"] = sorted(attending)
+        reminder["not_attending"] = not_attending
+        save_reminders(self.cog.reminders)
+        await interaction.response.send_message("Noted. Thanks for letting us know!", ephemeral=True)
+        await self.cog.refresh_vote_messages(self.reminder_id)
 
 
 class EditEventModal(discord.ui.Modal, title="Edit Event"):
@@ -548,6 +602,36 @@ class EventPanelView(discord.ui.View):
             await self.message.edit(view=self)
 
 
+class JoinVcView(discord.ui.View):
+    def __init__(self, cog, reminder_id):
+        super().__init__(timeout=300)
+        self.cog = cog
+        self.reminder_id = reminder_id
+
+    @discord.ui.button(label="Join VC", style=discord.ButtonStyle.primary, emoji="🎧")
+    async def join_vc_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cog.sync_reminders()
+        reminder = self.cog.reminders.get(self.reminder_id)
+        vc_id = reminder.get("vc_channel_id") if reminder else None
+        if not vc_id:
+            await interaction.response.send_message("No VC channel configured for this event.", ephemeral=True)
+            return
+        channel = interaction.guild.get_channel(int(vc_id))
+        if not channel:
+            await interaction.response.send_message("VC channel not found.", ephemeral=True)
+            return
+        if not isinstance(channel, discord.VoiceChannel):
+            await interaction.response.send_message("That channel is not a voice channel.", ephemeral=True)
+            return
+        try:
+            await interaction.user.move_to(channel)
+            await interaction.response.send_message(f"Joined {channel.mention}!", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.response.send_message("I don't have permission to move you.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"Could not join: {e}", ephemeral=True)
+
+
 class VotingView(discord.ui.View):
     def __init__(self, cog, reminder_id, closed=False):
         super().__init__(timeout=None)
@@ -561,7 +645,7 @@ class VotingView(discord.ui.View):
             disabled=closed,
         )
         not_attend_btn = discord.ui.Button(
-            label="❌ Not Attending",
+            label="❌ Not Sure",
             style=discord.ButtonStyle.danger,
             custom_id=f"vote_notattend_{reminder_id}",
             disabled=closed,
@@ -576,19 +660,19 @@ class VotingView(discord.ui.View):
 
             user_id = str(interaction.user.id)
             attending = set(reminder.get("attending", []))
-            not_attending = set(reminder.get("not_attending", []))
+            not_attending = list(reminder.get("not_attending", []))
 
             attending.add(user_id)
-            not_attending.discard(user_id)
-
+            not_attending = [n for n in not_attending if (n.get("user_id") if isinstance(n, dict) else n) != user_id]
             reminder["attending"] = sorted(attending)
-            reminder["not_attending"] = sorted(not_attending)
+            reminder["not_attending"] = not_attending
             save_reminders(self.cog.reminders)
 
-            await interaction.response.send_message(
-                "Join the Fam Event VC 🎧\nClick below to join",
-                ephemeral=True,
-            )
+            content = "Join Fam Event VC 🎧"
+            if reminder.get("vc_channel_id"):
+                await interaction.response.send_message(content, ephemeral=True, view=JoinVcView(self.cog, self.reminder_id))
+            else:
+                await interaction.response.send_message(content, ephemeral=True)
             await self.cog.refresh_vote_messages(self.reminder_id)
 
         async def not_attend_callback(interaction: discord.Interaction):
@@ -597,20 +681,7 @@ class VotingView(discord.ui.View):
             if not reminder or reminder.get("voting_closed"):
                 await interaction.response.send_message("Voting is closed.", ephemeral=True)
                 return
-
-            user_id = str(interaction.user.id)
-            attending = set(reminder.get("attending", []))
-            not_attending = set(reminder.get("not_attending", []))
-
-            not_attending.add(user_id)
-            attending.discard(user_id)
-
-            reminder["attending"] = sorted(attending)
-            reminder["not_attending"] = sorted(not_attending)
-            save_reminders(self.cog.reminders)
-
-            await interaction.response.defer()
-            await self.cog.refresh_vote_messages(self.reminder_id)
+            await interaction.response.send_modal(NotSureReasonModal(self.cog, self.reminder_id))
 
         attend_btn.callback = attend_callback
         not_attend_btn.callback = not_attend_callback
@@ -683,7 +754,7 @@ class Reminders(commands.Cog):
             inline=False,
         )
         embed.add_field(
-            name=f"❌ Not Attending ({len(reminder.get('not_attending', []))})",
+            name=f"❌ Not Sure ({len(reminder.get('not_attending', []))})",
             value=not_attending_list,
             inline=False,
         )
@@ -714,7 +785,11 @@ class Reminders(commands.Cog):
     def format_list(self, users):
         if not users:
             return "None yet"
-        return "\n".join(f"• <@{user_id}>" for user_id in users)
+        lines = []
+        for item in users:
+            uid = item.get("user_id") if isinstance(item, dict) else item
+            lines.append(f"• <@{uid}>")
+        return "\n".join(lines)
 
     def server_target_channel(self, reminder):
         if reminder.get("target_type") == "channel" and reminder.get("target_id"):
@@ -900,23 +975,27 @@ class Reminders(commands.Cog):
 
         user_id = str(payload.user_id)
         attending = set(reminder.get("attending", []))
-        not_attending = set(reminder.get("not_attending", []))
+        not_attending = list(reminder.get("not_attending", []))
+        not_attending = [n for n in not_attending if (n.get("user_id") if isinstance(n, dict) else n) != user_id]
 
         if add:
             if emoji == GOING_EMOJI:
                 attending.add(user_id)
-                not_attending.discard(user_id)
             else:
-                not_attending.add(user_id)
+                not_attending.append({
+                    "user_id": user_id,
+                    "reason": "Reaction",
+                    "timestamp": discord.utils.utcnow().isoformat(),
+                })
                 attending.discard(user_id)
         else:
             if emoji == GOING_EMOJI:
                 attending.discard(user_id)
             else:
-                not_attending.discard(user_id)
+                not_attending = [n for n in not_attending if (n.get("user_id") if isinstance(n, dict) else n) != user_id]
 
         reminder["attending"] = sorted(attending)
-        reminder["not_attending"] = sorted(not_attending)
+        reminder["not_attending"] = not_attending
         save_reminders(self.reminders)
         await self.refresh_vote_messages(reminder["id"])
 
@@ -1076,7 +1155,6 @@ class Reminders(commands.Cog):
                     guild = self.get_guild()
                     if sent_any:
                         self.bot.dispatch("event_executed", guild, reminder, "Event triggered successfully")
-                        self.bot.dispatch("check_event_attendance", guild, reminder)
 
                     if reminder.get("daily"):
                         reminder["going"] = []

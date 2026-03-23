@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { LayoutDashboard, Calendar, MessageSquare, Users, BarChart3, ScrollText, Shield, Sun, Moon, LogOut, Bell, Menu, X, Zap } from 'lucide-react';
+import { LayoutDashboard, Calendar, MessageSquare, Users, BarChart3, ScrollText, Shield, Sun, Moon, LogOut, Bell, Menu, X, Zap, FileText, Hash } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from './ThemeProvider';
 import { DashboardContext } from '../lib/DashboardContext';
@@ -8,15 +8,22 @@ import { useDashboard } from '../hooks/useDashboard';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
 
-const NAV_ITEMS = [
+const MAIN_NAV = [
   { id: 'overview', path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'events', path: '/dashboard/events', label: 'Events', icon: Calendar },
   { id: 'welcome', path: '/dashboard/welcome', label: 'Welcome', icon: MessageSquare },
   { id: 'users', path: '/dashboard/users', label: 'Users', icon: Users },
   { id: 'activity', path: '/dashboard/activity', label: 'Activity', icon: BarChart3 },
-  { id: 'logs', path: '/dashboard/logs', label: 'Logs', icon: ScrollText },
   { id: 'strikes', path: '/dashboard/strikes', label: 'Strikes', icon: Zap },
   { id: 'autorole', path: '/dashboard/autorole', label: 'Auto Role', icon: Shield },
+];
+
+const SYSTEM_LOGS_NAV = [
+  { id: 'system-logs', path: '/dashboard/logs', label: 'System Logs', icon: FileText },
+];
+
+const DISCORD_LOGS_NAV = [
+  { id: 'discord-logs', path: '/dashboard/discord-logs', label: 'Logs', icon: Hash },
 ];
 
 export default function DashboardLayout() {
@@ -53,7 +60,7 @@ export default function DashboardLayout() {
         {/* Mobile sidebar toggle */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="fixed left-4 top-4 z-[60] flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white backdrop-blur-lg lg:hidden"
+          className="fixed left-4 top-4 z-[60] flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--bg-sidebar)]/90 text-[var(--text-main)] backdrop-blur-lg lg:hidden"
         >
           {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         </button>
@@ -74,7 +81,7 @@ export default function DashboardLayout() {
           {/* Nav */}
           <nav className="flex-1 overflow-y-auto px-3 py-4">
             <div className="space-y-1">
-              {NAV_ITEMS.map((item) => {
+              {MAIN_NAV.map((item) => {
                 const active = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
                 const isExactDashboard = item.path === '/dashboard' && location.pathname === '/dashboard';
                 const isActive = active || isExactDashboard;
@@ -85,8 +92,8 @@ export default function DashboardLayout() {
                     onClick={() => { navigate(item.path); setSidebarOpen(false); }}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                       isActive
-                        ? 'bg-cyan-400/12 text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
-                        : 'text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text-main)]'
+                        ? 'bg-cyan-400/12 text-cyan-600 dark:text-cyan-100 shadow-[inset_0_1px_0_rgba(0,0,0,0.06)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+                        : 'text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--text-main)]'
                     }`}
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
@@ -94,6 +101,48 @@ export default function DashboardLayout() {
                   </button>
                 );
               })}
+
+              <div className="pt-4 mt-4 border-t border-[var(--border)]">
+                <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">System Logs</p>
+                {SYSTEM_LOGS_NAV.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { navigate(item.path); setSidebarOpen(false); }}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                        isActive
+                          ? 'bg-cyan-400/12 text-cyan-600 dark:text-cyan-100'
+                          : 'text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="pt-2">
+                <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Logs</p>
+                {DISCORD_LOGS_NAV.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { navigate(item.path); setSidebarOpen(false); }}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                        isActive
+                          ? 'bg-cyan-400/12 text-cyan-600 dark:text-cyan-100'
+                          : 'text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </nav>
 

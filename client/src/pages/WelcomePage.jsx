@@ -75,30 +75,44 @@ export default function WelcomePage() {
         </CardContent>
       </Card>
 
-      {/* Discord Preview */}
+      {/* Discord Preview - Exact match to Discord message */}
       <Card>
         <CardContent className="pt-6">
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Discord Preview</h3>
-          <div className="rounded-xl bg-[#313338] p-4">
+          <p className="mb-3 text-xs text-[var(--text-muted)]">This matches the actual Discord message layout.</p>
+          <div className="rounded-xl bg-[#313338] p-4 font-sans">
             <div className="flex gap-4">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-sm shadow-lg">⚡</div>
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#5865F2] text-white text-sm font-bold shadow">IB</div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="font-semibold text-zinc-100">IND Blades Bot</span>
-                  <span className="rounded bg-[#5865F2] px-1.5 py-0.5 text-[10px] font-bold text-white">APP</span>
-                  <span className="text-xs text-zinc-400">Today</span>
+                  <span className="font-semibold text-[#f2f3f5]">IND Blades Bot</span>
+                  <span className="rounded bg-[#5865F2] px-1.5 py-0.5 text-[10px] font-bold text-white">BOT</span>
+                  <span className="text-xs text-[#b5bac1]">Today at {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
-                <div className="mt-2 rounded-lg border-l-4 border-l-[#51a7ff] bg-[#2b2d31] p-4">
-                  <p className="text-sm font-bold text-zinc-100">✨ Welcome <span className="rounded bg-[#51a7ff]/10 px-1 text-[#51a7ff]">@NewMember</span> to the Sanctuary! ✨</p>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-                    We're thrilled to have you here. Please verify yourself, grab your roles, and dive into the voice chats!
-                    <br /><br />
-                    Let's make some amazing memories! ⚡
-                  </p>
-                  <p className="mt-3 border-t border-zinc-700/50 pt-2 text-xs text-zinc-400">IND Blades • Premium Entry</p>
+                <div className="mt-2 overflow-hidden rounded" style={{ borderLeft: '4px solid #51a7ff', background: '#2b2d31' }}>
+                  <div className="flex gap-4 p-4">
+                    <div className="h-16 w-16 flex-shrink-0 rounded-full bg-[#5865F2]/30 flex items-center justify-center text-2xl">👤</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-[#f2f3f5] leading-relaxed whitespace-pre-wrap">
+                        {`✨ Welcome @NewMember to the IND Blades Family! ✨
+
+We're thrilled to have you here. Please verify yourself, grab your roles, and dive into the voice chats!
+
+Let's make some amazing memories! ⚡
+
+**Member #1** • IND Blades • Premium Entry`}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="px-4 pb-3 pt-0 flex items-center gap-2 text-xs text-[#b5bac1]">
+                    <span>IND Blades</span>
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Button variant="outline" onClick={sendPreview}>Send Preview to Discord</Button>
           </div>
         </CardContent>
       </Card>

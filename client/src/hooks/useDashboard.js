@@ -14,6 +14,7 @@ export function useDashboard() {
   const [autorole, setAutorole] = useState({ join_role_id: null, bindings: [], strike_mapping: {} });
   const [notifications, setNotifications] = useState({ enabled: false, user_ids: [] });
   const [strikeConfig, setStrikeConfig] = useState({ expiry_days: 7 });
+  const [activityConfig, setActivityConfig] = useState({ afk_channel_id: null });
   const [ping, setPing] = useState(-1);
   const [botStatus, setBotStatus] = useState('disconnected');
   const [liveSync, setLiveSync] = useState(false);
@@ -125,6 +126,7 @@ export function useDashboard() {
         setAutorole(d.autorole || { join_role_id: null, bindings: [], strike_mapping: {} });
         setNotifications(d.notifications || { enabled: false, user_ids: [] });
         setStrikeConfig(d.strike_config || { expiry_days: 7 });
+        setActivityConfig(d.activity_config || { afk_channel_id: null });
         setBotStatus(d.bot_status || 'disconnected');
         setChannels(Array.isArray(channelsRes.data) ? channelsRes.data : []);
         setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : []);
@@ -213,6 +215,13 @@ export function useDashboard() {
             case 'LOG_SETTINGS_UPDATED':
               showToast('Log settings updated.');
               break;
+            case 'DISCORD_LOGS_UPDATED':
+              showToast('Discord log settings updated.');
+              break;
+            case 'ACTIVITY_CONFIG_UPDATED':
+              setActivityConfig(data.payload?.config || { afk_channel_id: null });
+              showToast('Activity config updated.');
+              break;
             case 'BOT_STATUS_UPDATED':
               setBotStatus(data.payload?.connected ? 'connected' : 'disconnected');
               if (data.payload?.connected) showToast('Discord bot is back online.');
@@ -268,9 +277,9 @@ export function useDashboard() {
   })();
 
   return {
-    events, config, activity, logs, users, channels, roles, health, autorole, notifications, strikeConfig,
+    events, config, activity, logs, users, channels, roles, health, autorole, notifications, strikeConfig, activityConfig,
     ping, botStatus, liveSync, toast, errorMessage, loading, roster,
-    setConfig, setEvents, setAutorole, setNotifications, setStrikeConfig,
+    setConfig, setEvents, setAutorole, setNotifications, setStrikeConfig, setActivityConfig,
     showToast, handleError, logout, refreshEvents, refreshWelcome, refreshActivity, refreshLogs, refreshUsers, refreshStrikeConfig,
   };
 }

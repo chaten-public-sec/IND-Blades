@@ -1,4 +1,5 @@
 import os
+import json
 from datetime import timedelta
 
 import discord
@@ -6,6 +7,8 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from utils.storage import get_log_settings, load_data, save_data
+
+COMMANDS_PATH = os.path.join("data", "commands.json")
 
 DEFAULT_MODERATION_LOGS_CHANNEL_ID = int(os.getenv("MODERATION_LOGS_CHANNEL_ID", "0") or 0)
 
@@ -48,115 +51,99 @@ class Moderation(commands.Cog):
         if channel:
             await channel.send(embed=embed)
 
-    @commands.Cog.listener()
-    async def on_check_event_attendance(self, guild, reminder):
-        if not guild: return
-        
-        attending = set(reminder.get("attending", []))
-        
-        # Determine who should have attended
-        target_type = reminder.get("target_type")
-        target_id = reminder.get("target_id")
-        
-        eligible_users = []
-        if target_type == "user":
-            eligible_users = [target_id]
-        elif target_type == "role":
-            role = guild.get_role(int(target_id))
-            if role:
-                eligible_users = [str(m.id) for m in role.members if not m.bot]
-        elif target_type == "channel":
-            # For channel events, we might use a default role like FAMILY_ROLE_ID
-            from cogs.reminders import FAMILY_ROLE_ID
-            role = guild.get_role(FAMILY_ROLE_ID)
-            if role:
-                eligible_users = [str(m.id) for m in role.members if not m.bot]
+    # Auto-strike on event absence REMOVED per requirement: Admin manually assigns strike only
 
-        missed_users = [u_id for u_id in eligible_users if u_id not in attending]
-        
-        if not missed_users: return
+    def load_commands(self):
+        if not os.path.exists(COMMANDS_PATH):
+            return []
+        try:
+            with open(COMMANDS_PATH, "r", encoding="utf-8") as f:
+                v = json.load(f)
+                return v if isinstance(v, list) else []
+        except Exception:
+            return []
 
-        data = load_data()
-        config = data.get("__strikes_config__", {"expiry_days": 7})
-        expiry = config.get("expiry_days", 7)
-        
-        if "__strikes__" not in data: data["__strikes__"] = {}
-        
-        for user_id in missed_users:
-            member = guild.get_member(int(user_id))
-            if not member:
-                try:
-                    member = await guild.fetch_member(int(user_id))
-                except:
-                    pass
-            
-            if not member: continue
-            
-            if user_id not in data["__strikes__"]:
-                data["__strikes__"][user_id] = {"user_id": user_id, "strikes": [], "strike_count": 0}
-            
-            reason = f"Missed Event: {reminder.get('desc')}"
-            strike_entry = {
-                "reason": reason,
-                "timestamp": discord.utils.utcnow().isoformat(),
-                "expires_at": (discord.utils.utcnow() + timedelta(days=expiry)).isoformat()
-            }
-            data["__strikes__"][user_id]["strikes"].append(strike_entry)
-            data["__strikes__"][user_id]["strike_count"] = len(data["__strikes__"][user_id]["strikes"])
-            count = data["__strikes__"][user_id]["strike_count"]
-            
-            # Send notification
+    def save_commands(self, commands_list):
+        os.makedirs("data", exist_ok=True)
+        with open(COMMANDS_PATH, "w", encoding="utf-8") as f:
+            json.dump(commands_list, f, indent=2)
+
+    @tasks.loop(seconds=5)
+    async def strike_command_worker(self):
+        """Process strike_added/strike_removed from dashboard API."""
+        guild = self.bot.guilds[0] if self.bot.guilds else None
+        if not guild:
+            return
+        commands_list = self.load_commands()
+        updated = False
+        for cmd in commands_list:
+            if cmd.get("status") != "pending":
+                continue
+            if cmd.get("type") not in ("strike_added", "strike_removed"):
+                continue
+            cmd["status"] = "processing"
+            updated = True
+        if updated:
+            self.save_commands(commands_list)
+        for cmd in commands_list:
+            if cmd.get("status") != "processing" or cmd.get("type") not in ("strike_added", "strike_removed"):
+                continue
+            payload = cmd.get("payload", {})
+            user_id = payload.get("user_id")
+            strike_count = payload.get("strike_count", 0)
             try:
-                embed = self.strike_embed(member, reason, count)
-                await self.send_mod_log(guild, self.mod_log_embed("Auto Strike", "System", member, reason, strikes=count))
-                # Also try to DM or post in event channel? 
-                # Let's post in event channel if it exists
-                from cogs.reminders import REMINDER_CHANNEL_ID
-                channel_id = reminder.get("channel_id") or REMINDER_CHANNEL_ID
-                channel = guild.get_channel(int(channel_id))
-                if channel:
-                    await channel.send(embed=embed)
-            except: pass
-            
-            self.bot.dispatch("strike_updated", guild, member, count, "added")
+                member = guild.get_member(int(user_id))
+                if not member:
+                    member = await guild.fetch_member(int(user_id))
+                if member:
+                    self.bot.dispatch("strike_updated", guild, member, strike_count, "added" if cmd["type"] == "strike_added" else "removed")
+            except Exception:
+                pass
+            cmd["status"] = "done"
+            cmd["completed_at"] = discord.utils.utcnow().isoformat()
+            self.save_commands(commands_list)
 
-        save_data(data)
+    @strike_command_worker.before_loop
+    async def before_strike_worker(self):
+        await self.bot.wait_until_ready()
 
     @tasks.loop(hours=1)
     async def strike_expiry_check(self):
         data = load_data()
-        if "__strikes__" not in data: return
-        
+        if "__strikes__" not in data:
+            return
+        guild = self.bot.guilds[0] if self.bot.guilds else None
+        if not guild:
+            return
         changed = False
         now = discord.utils.utcnow()
-        
         for user_id, user_data in data["__strikes__"].items():
             original_count = len(user_data["strikes"])
-            user_data["strikes"] = [s for s in user_data["strikes"] if discord.utils.parse_time(s["expires_at"]) > now]
-            
+            try:
+                user_data["strikes"] = [s for s in user_data["strikes"] if discord.utils.parse_time(s["expires_at"]) > now]
+            except Exception:
+                continue
             if len(user_data["strikes"]) != original_count:
                 user_data["strike_count"] = len(user_data["strikes"])
                 changed = True
-                # Dispatch update for role sync
-                if guild:
+                try:
                     member = guild.get_member(int(user_id))
                     if not member:
-                        try:
-                            member = await guild.fetch_member(int(user_id))
-                        except:
-                            pass
-                    
+                        member = await guild.fetch_member(int(user_id))
                     if member:
                         self.bot.dispatch("strike_updated", guild, member, user_data["strike_count"], "expired")
-
+                except Exception:
+                    pass
         if changed:
             save_data(data)
 
     async def cog_load(self):
         self.strike_expiry_check.start()
+        self.strike_command_worker.start()
 
     async def cog_unload(self):
         self.strike_expiry_check.cancel()
+        self.strike_command_worker.cancel()
 
     @app_commands.command(name="strike", description="Manage strikes")
     @app_commands.describe(

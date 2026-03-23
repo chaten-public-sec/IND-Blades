@@ -1,11 +1,11 @@
 import { cn } from '../../lib/cn';
 
 const variants = {
-  default: 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100',
-  success: 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100',
-  warning: 'border-amber-300/20 bg-amber-300/10 text-amber-100',
-  danger: 'border-rose-300/20 bg-rose-300/10 text-rose-100',
-  neutral: 'border-white/12 bg-white/6 text-slate-200'
+  default: 'border-cyan-500/30 bg-cyan-500/15 text-cyan-700 dark:text-cyan-100',
+  success: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-100',
+  warning: 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-100',
+  danger: 'border-rose-500/30 bg-rose-500/15 text-rose-700 dark:text-rose-100',
+  neutral: 'border-[var(--border)] bg-black/5 dark:bg-white/6 text-[var(--text-main)]'
 };
 
 export function Badge({ className, variant = 'default', ...props }) {

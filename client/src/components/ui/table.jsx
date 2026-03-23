@@ -5,21 +5,21 @@ export function Table({ className, ...props }) {
 }
 
 export function TableHead({ className, ...props }) {
-  return <thead className={cn('text-xs uppercase tracking-[0.2em] text-slate-500', className)} {...props} />;
+  return <thead className={cn('text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]', className)} {...props} />;
 }
 
 export function TableBody({ className, ...props }) {
-  return <tbody className={cn('text-slate-100', className)} {...props} />;
+  return <tbody className={cn('text-[var(--text-main)]', className)} {...props} />;
 }
 
 export function TableRow({ className, ...props }) {
-  return <tr className={cn('transition hover:bg-white/3', className)} {...props} />;
+  return <tr className={cn('transition hover:bg-black/5 dark:hover:bg-white/3', className)} {...props} />;
 }
 
 export function TableHeaderCell({ className, ...props }) {
-  return <th className={cn('border-b border-white/10 px-4 py-3 font-semibold', className)} {...props} />;
+  return <th className={cn('border-b border-[var(--border)] px-4 py-3 font-semibold', className)} {...props} />;
 }
 
 export function TableCell({ className, ...props }) {
-  return <td className={cn('border-b border-white/8 px-4 py-4 align-top', className)} {...props} />;
+  return <td className={cn('border-b border-[var(--border)] px-4 py-4 align-top', className)} {...props} />;
 }

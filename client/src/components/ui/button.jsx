@@ -3,12 +3,12 @@ import { cn } from '../../lib/cn';
 
 const variantClasses = {
   default:
-    'bg-gradient-to-r from-cyan-400 via-sky-400 to-teal-300 text-slate-950 shadow-[0_12px_30px_rgba(34,211,238,0.22)] hover:brightness-105',
-  secondary: 'surface-soft text-slate-100 hover:border-cyan-300/30 hover:bg-slate-900/80',
-  outline: 'border border-white/12 bg-transparent text-slate-100 hover:border-cyan-300/30 hover:bg-cyan-400/8',
-  ghost: 'border border-transparent bg-transparent text-slate-300 hover:bg-white/6 hover:text-white',
-  danger: 'bg-gradient-to-r from-rose-500 to-orange-400 text-white shadow-[0_12px_30px_rgba(244,63,94,0.2)] hover:brightness-105',
-  subtle: 'bg-white/6 text-slate-100 hover:bg-white/10'
+    'bg-gradient-to-r from-cyan-500 via-sky-500 to-teal-400 text-white shadow-[0_4px_14px_rgba(34,211,238,0.3)] hover:brightness-105 dark:shadow-[0_12px_30px_rgba(34,211,238,0.22)]',
+  secondary: 'surface-soft text-[var(--text-main)] hover:border-cyan-500/30 dark:hover:border-cyan-300/30 dark:hover:bg-slate-900/80',
+  outline: 'border border-[var(--border)] bg-transparent text-[var(--text-main)] hover:border-cyan-500/40 hover:bg-cyan-500/10 dark:hover:border-cyan-300/30 dark:hover:bg-cyan-400/8',
+  ghost: 'border border-transparent bg-transparent text-[var(--text-muted)] hover:bg-black/5 hover:text-[var(--text-main)] dark:hover:bg-white/6 dark:hover:text-white',
+  danger: 'bg-gradient-to-r from-rose-500 to-orange-400 text-white shadow-[0_4px_14px_rgba(244,63,94,0.3)] hover:brightness-105',
+  subtle: 'bg-black/5 dark:bg-white/6 text-[var(--text-main)] hover:bg-black/10 dark:hover:bg-white/10'
 };
 
 const sizeClasses = {

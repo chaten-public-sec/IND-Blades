@@ -6,7 +6,7 @@ export function SelectField({ className, icon = true, children, ...props }) {
     <div className="relative">
       <select
         className={cn(
-          'surface-soft h-11 w-full appearance-none rounded-2xl px-4 pr-11 text-sm text-slate-100 transition focus:border-cyan-300/30 focus:bg-slate-950/90',
+          'surface-soft h-11 w-full appearance-none rounded-2xl px-4 pr-11 text-sm text-[var(--text-main)] transition focus:border-cyan-500/40 focus:ring-2 focus:ring-cyan-500/20',
           className
         )}
         {...props}
@@ -14,7 +14,7 @@ export function SelectField({ className, icon = true, children, ...props }) {
         {children}
       </select>
       {icon ? (
-        <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
       ) : null}
     </div>
   );
