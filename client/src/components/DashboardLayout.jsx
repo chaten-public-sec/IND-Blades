@@ -142,13 +142,24 @@ export default function DashboardLayout() {
           </nav>
 
           <div className="border-t border-[var(--border)] px-4 py-4 space-y-2">
-            <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-              <div className={`h-2 w-2 rounded-full ${apiOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.5)]'}`} />
-              {apiOnline ? `API Server: Online · ${dashboard.ping}ms` : 'API Server: Offline'}
+            <div className={`flex items-center gap-3 rounded-2xl border px-3 py-1.5 transition-all duration-500 ${apiOnline ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-rose-500/20 bg-rose-500/5'}`}>
+              <div className="relative flex h-2 w-2">
+                <div className={`absolute h-full w-full animate-ping rounded-full opacity-75 ${apiOnline ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                <div className={`relative h-2 w-2 rounded-full ${apiOnline ? 'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]' : 'bg-rose-400 shadow-[0_0_12px_rgba(251,113,133,0.8)]'}`} />
+              </div>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${apiOnline ? 'text-emerald-400' : 'text-rose-400'}`}>
+                API: {apiOnline ? 'Linked' : 'Offline'}
+              </span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-              <div className={`h-2 w-2 rounded-full ${dashboard.botStatus === 'connected' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.5)]'}`} />
-              Bot: {dashboard.botStatus === 'connected' ? 'Online' : 'Offline'}
+
+            <div className={`flex items-center gap-3 rounded-2xl border px-3 py-1.5 transition-all duration-500 ${dashboard.botStatus === 'connected' ? 'border-cyan-500/20 bg-cyan-500/5' : 'border-rose-500/20 bg-rose-500/5'}`}>
+              <div className="relative flex h-2 w-2">
+                <div className={`absolute h-full w-full animate-ping rounded-full opacity-75 ${dashboard.botStatus === 'connected' ? 'bg-cyan-400' : 'bg-rose-400'}`} />
+                <div className={`relative h-2 w-2 rounded-full ${dashboard.botStatus === 'connected' ? 'bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.8)]' : 'bg-rose-400 shadow-[0_0_12px_rgba(251,113,133,0.8)]'}`} />
+              </div>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${dashboard.botStatus === 'connected' ? 'text-cyan-400' : 'text-rose-400'}`}>
+                Bot: {dashboard.botStatus === 'connected' ? 'Active' : 'Offline'}
+              </span>
             </div>
           </div>
         </aside>

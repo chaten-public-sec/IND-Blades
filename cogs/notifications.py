@@ -38,7 +38,7 @@ class Notifications(commands.Cog):
         """
         Triggered when a strike is added, removed or expired.
         """
-        title = "🛡️ System Intelligence: Strike Update"
+        title = "🛡️ SYSTEM DISPATCH: STRIKE UPDATE"
         color = 0xED4245 if action_type == "added" else 0x51A7FF
         
         embed = discord.Embed(title=title, color=color)
@@ -56,7 +56,7 @@ class Notifications(commands.Cog):
         """
         Triggered when an event is created, updated, deleted, enabled, or disabled.
         """
-        title = "📅 System Intelligence: Event Action"
+        title = "🛡️ SYSTEM DISPATCH: EVENT LOG"
         embed = discord.Embed(title=title, color=0x34D399) # Emerald-400
         
         embed.description = f"**{action_text}**"
@@ -74,7 +74,7 @@ class Notifications(commands.Cog):
         """
         Triggered when an event's target channel is changed.
         """
-        title = "📅 System Intelligence: Channel Routing"
+        title = "🛡️ SYSTEM DISPATCH: ROUTING UPDATE"
         embed = discord.Embed(title=title, color=0xFBBF24) # Amber-400
         
         embed.description = f"Target routing updated for **{reminder.get('desc', 'Untitled')}**."

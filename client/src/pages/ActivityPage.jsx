@@ -34,7 +34,7 @@ export default function ActivityPage() {
     try {
       const r = await api.post('/api/activity/config', { afk_channel_id: afkChannelId || null });
       setActivityConfig(r.data?.config || {});
-      showToast('Activity config saved.');
+      showToast('success', 'Exclusion settings updated', 'activity-config');
     } catch (err) { handleError(err, 'Failed to save.'); }
     finally { setConfigSaving(false); }
   };
@@ -48,7 +48,7 @@ export default function ActivityPage() {
   const resetStats = async () => {
     try {
       await api.post('/api/activity/reset');
-      showToast('Activity stats reset.');
+      showToast('success', 'Activity stats reset', 'activity-reset');
       setResetDialogOpen(false);
     } catch (err) { handleError(err, 'Failed to reset.'); }
   };

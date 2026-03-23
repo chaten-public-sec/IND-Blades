@@ -14,7 +14,7 @@ const LOGS_PATH = path.join(DATA_DIR, 'logs.json');
 const COMMANDS_PATH = path.join(DATA_DIR, 'commands.json');
 const LEGACY_WELCOME_PATH = path.join(ROOT_DIR, 'welcome.json');
 const ENV_PATH = path.join(ROOT_DIR, '.env');
-const RESERVED_KEYS = new Set(['__activity__', '__activity_config__', '__welcome__', '__logs__', '__autorole__', '__notifications__', '__vc_config__', '__strikes__', '__strikes_config__', '__discord_logs__']);
+const RESERVED_KEYS = new Set(['__activity__', '__activity_config__', '__welcome__', '__logs__', '__logs_v2__', '__notifications__', '__vc_config__', '__strikes__', '__strikes_config__', '__discord_logs__']);
 const SNOWFLAKE_FIELD_PATTERN = /(:\s*)(\d{15,})(?=\s*[,}\]])/g;
 const SNOWFLAKE_STRING_PATTERN = /(:\s*)"(\d{15,})"(?=\s*[,}\]])/g;
 
@@ -198,23 +198,18 @@ function normalizeLogSettings(value) {
 const DISCORD_LOG_CATEGORIES = ['moderation', 'voice', 'message'];
 
 function normalizeDiscordLogsConfig(value) {
-  const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-  const defaultChannel = getDefaultModerationLogChannelId() || getDefaultEventLogChannelId();
-  const categories = input.categories && typeof input.categories === 'object' ? input.categories : {};
-  const result = { enabled: parseBoolean(input.enabled, false), categories: {} };
-  for (const key of DISCORD_LOG_CATEGORIES) {
-    const cat = categories[key];
-    const channelId = cat && typeof cat === 'object' ? parseSnowflake(cat.channel_id) : null;
-    result.categories[key] = {
-      enabled: cat && typeof cat === 'object' ? parseBoolean(cat.enabled, false) : false,
-      channel_id: channelId || (key === 'moderation' ? defaultChannel : null)
-    };
+  if (value && typeof value === 'object' && Array.isArray(value.categories)) {
+    return value;
   }
-  return result;
+  const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return {
+    enabled: parseBoolean(input.enabled, false),
+    categories: []
+  };
 }
 
 function getDiscordLogsConfig(store = readStore()) {
-  return normalizeDiscordLogsConfig(store.__discord_logs__);
+  return normalizeDiscordLogsConfig(store.__logs_v2__);
 }
 
 function setDiscordLogsConfig(partial) {
@@ -224,19 +219,15 @@ function setDiscordLogsConfig(partial) {
   if (Object.prototype.hasOwnProperty.call(partial || {}, 'enabled')) {
     next.enabled = parseBoolean(partial.enabled, false);
   }
-  if (partial?.categories && typeof partial.categories === 'object') {
-    next.categories = { ...current.categories };
-    for (const key of DISCORD_LOG_CATEGORIES) {
-      if (partial.categories[key]) {
-        const cat = partial.categories[key];
-        next.categories[key] = {
-          enabled: parseBoolean(cat.enabled, false),
-          channel_id: parseSnowflake(cat.channel_id) || current.categories[key]?.channel_id || null
-        };
-      }
-    }
+  if (Array.isArray(partial?.categories)) {
+    next.categories = partial.categories.map(cat => ({
+      name: String(cat.name || 'Unnamed Category'),
+      enabled: parseBoolean(cat.enabled, true),
+      logs: Array.isArray(cat.logs) ? cat.logs.map(String) : [],
+      channel_id: parseSnowflake(cat.channel_id)
+    }));
   }
-  store.__discord_logs__ = next;
+  store.__logs_v2__ = next;
   writeStore(store);
   return next;
 }
@@ -352,8 +343,8 @@ function ensureDataFiles() {
   const legacyWelcome = readSnowflakeJson(LEGACY_WELCOME_PATH, {});
   store.__welcome__ = normalizeWelcomeConfig(store.__welcome__ ?? legacyWelcome);
   store.__logs__ = normalizeLogSettings(store.__logs__);
-  if (!store.__discord_logs__ || typeof store.__discord_logs__.categories !== 'object') {
-    store.__discord_logs__ = normalizeDiscordLogsConfig(store.__discord_logs__);
+  if (!store.__logs_v2__ || !Array.isArray(store.__logs_v2__.categories)) {
+    store.__logs_v2__ = normalizeDiscordLogsConfig(store.__logs_v2__);
   }
   store.__autorole__ = normalizeAutoRoleConfig(store.__autorole__);
   store.__notifications__ = normalizeNotificationConfig(store.__notifications__);
@@ -920,7 +911,7 @@ const io = new Server(server, {
   },
   transports: ['websocket', 'polling'] // Both for reliability
 });
-const port = process.env.PORT || 3001;
+const port = getEnv('PORT', 3001);
 const dashboardKey = getEnv('DASHBOARD_KEY', 'Blades@123');
 const sessionSecret = getEnv('SESSION_SECRET', dashboardKey);
 
@@ -947,6 +938,12 @@ let lastManualEmit = 0;
 function emitSystemUpdate(type, payload = {}) {
   lastManualEmit = Date.now();
   io.emit('systemUpdate', { type, payload });
+  
+  // High-priority mapping for Bot Status
+  if (type === 'BOT_STATUS_UPDATED') {
+    io.emit('systemUpdate', { type: 'BOT_STATUS', payload });
+  }
+
   // Legacy events for backward compatibility
   if (type.startsWith('EVENT_')) io.emit('eventsUpdated');
   if (type === 'WELCOME_UPDATED') io.emit('welcomeUpdated');
@@ -1010,6 +1007,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/bot-status', (req, res) => {
+  res.json({
+    connected: botState.connected,
+    timestamp: Date.now()
+  });
+});
+
 app.get('/api/test', (req, res) => {
   res.json({
     ...getHealth(),
@@ -1023,11 +1027,19 @@ app.post('/api/login', (req, res) => {
     res.status(400).json({ success: false, error: 'Enter your dashboard key.' });
     return;
   }
-  if (key !== dashboardKey) {
+  
+  // SUPPORT SESSION_SECRET OR DASHBOARD_KEY AS PASSWORD
+  const validKeys = [
+    String(dashboardKey).trim(),
+    String(sessionSecret).trim()
+  ].filter(k => k && k !== 'undefined');
+
+  if (!validKeys.includes(key)) {
     appendLog('Failed dashboard login attempt.', 'warning', 'auth');
     res.status(401).json({ success: false, error: 'That login key is not valid.' });
     return;
   }
+  
   req.session.authenticated = true;
   appendLog('Dashboard login successful.', 'info', 'auth');
   res.json({ success: true });
@@ -1461,10 +1473,18 @@ function startBot() {
   const botPath = path.join(ROOT_DIR, 'bot.py');
   console.log(`[INFO] Starting bot process (Retry Delay: ${botRetryDelay / 1000}s)`);
   
-  const botProcess = spawn('python3', [botPath], {
+  if (global.activeBotProcess) {
+    console.log('[INFO] Killing existing bot process before restart...');
+    try { global.activeBotProcess.kill(); } catch {}
+  }
+
+  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+  const botProcess = spawn(pythonCmd, [botPath], {
     stdio: 'inherit',
     env: { ...process.env, PYTHONUNBUFFERED: '1' }
   });
+
+  global.activeBotProcess = botProcess;
 
   botProcess.on('close', (code) => {
     botState.connected = false;

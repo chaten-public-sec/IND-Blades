@@ -174,12 +174,13 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
                           </Badge>
                           <Button
                             size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0 text-red-500/70 opacity-100"
+                            variant="danger"
+                            className="h-7 gap-1.5 px-3 text-[9px] font-bold uppercase tracking-wider opacity-100"
                             onClick={() => removeStrike(i)}
                             loading={removingIdx === i}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Remove Strike
                           </Button>
                         </div>
                       </div>

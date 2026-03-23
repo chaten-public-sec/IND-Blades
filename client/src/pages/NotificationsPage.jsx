@@ -49,7 +49,7 @@ export default function NotificationsPage() {
       setNotifications(r.data?.config || {});
       setEnabled(r.data?.config?.enabled ?? enable);
       setSelectedIds(new Set(r.data?.config?.user_ids || []));
-      showToast('Notification settings saved.');
+      showToast('success', 'Notification settings updated', 'notifications-save');
     } catch (err) { handleError(err, 'Failed to save.'); }
     finally { setSaving(false); }
   };

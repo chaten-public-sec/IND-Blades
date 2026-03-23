@@ -107,10 +107,10 @@ export default function EventsPage() {
       };
       if (form.id) {
         await api.post('/api/events/update', payload);
-        showToast('Event updated.');
+        showToast('success', 'Event updated successfully', 'event-update');
       } else {
         await api.post('/api/events/create', payload);
-        showToast('Event created.');
+        showToast('success', 'Event created successfully', 'event-create');
       }
       setOpen(false);
     } catch (err) { handleError(err, 'Failed to save event.'); }
@@ -127,7 +127,7 @@ export default function EventsPage() {
     setDeleting(true);
     try {
       await api.post('/api/events/delete', { id: deleteTarget.id });
-      showToast(`Event "${deleteTarget.desc}" deleted.`);
+      showToast('success', 'Event deleted successfully', 'event-delete');
       setDeleteOpen(false);
       setDeleteTarget(null);
     } catch (err) { handleError(err, 'Failed to delete.'); }
@@ -135,7 +135,10 @@ export default function EventsPage() {
   };
 
   const toggle = async (event) => {
-    try { await api.post('/api/events/toggle', { id: event.id, enabled: !event.enabled }); showToast(event.enabled ? 'Event paused.' : 'Event resumed.'); }
+    try { 
+      await api.post('/api/events/toggle', { id: event.id, enabled: !event.enabled }); 
+      showToast('success', event.enabled ? 'Event paused' : 'Event resumed', 'event-toggle'); 
+    }
     catch (err) { handleError(err, 'Failed to toggle.'); }
   };
 

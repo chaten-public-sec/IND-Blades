@@ -734,12 +734,13 @@ class Reminders(commands.Cog):
 
     def voting_embed(self, reminder, closed=False):
         status_text = "Voting closed" if closed else "⚡ Join the event or you may get a strike"
+        title_prefix = "📅 EVENT INTELLIGENCE" if not closed else "🔒 VOTING CLOSED"
         color = 0xED4245 if closed else 0x51A7FF
         attending_list = self.format_list(reminder.get("attending", []))
         not_attending_list = self.format_list(reminder.get("not_attending", []))
 
         embed = discord.Embed(
-            title=f"📅 {reminder.get('desc', 'Event')}",
+            title=f"{title_prefix}: {reminder.get('desc', 'Event')}",
             description=(
                 f"{status_text}\n"
                 "━━━━━━━━━━━━━━━━━━\n"
@@ -764,7 +765,7 @@ class Reminders(commands.Cog):
 
     def reminder_embed(self, reminder):
         embed = discord.Embed(
-            title=f"🔔 {reminder.get('desc', 'Event')}",
+            title=f"⚡ ACTION REQUIRED: {reminder.get('desc', 'Event')}",
             description=(
                 "Starting now\n"
                 "━━━━━━━━━━━━━━━━━━\n"

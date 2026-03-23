@@ -1,776 +1,146 @@
 [
   {
-    "id": "cc4f5a46-9b4f-4d08-af03-36ba44adb9a8",
-    "message": "API server listening on port 10000.",
+    "id": "733d8c15-6919-4358-a774-322e6329f74e",
+    "message": "Dashboard session closed.",
     "level": "info",
-    "source": "server",
+    "source": "auth",
     "meta": {},
-    "timestamp": "2026-03-23T04:14:21.105Z"
+    "timestamp": "2026-03-23T17:15:11.079Z"
   },
   {
-    "id": "9df49829-6497-4a0c-b520-115a76b4af80",
-    "message": "Enabled event \"Foundary\".",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "02442d97-e2d3-431b-a43a-070e15af4319"
-    },
-    "timestamp": "2026-03-22T15:50:31.035Z"
-  },
-  {
-    "id": "77f95385-2a82-4f3d-b796-568a946dcdef",
-    "message": "Updated event \"Harbor\".",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "03b57a0c-9f17-4d3c-9f19-7f8c882e50bc"
-    },
-    "timestamp": "2026-03-22T15:50:25.892Z"
-  },
-  {
-    "id": "86e9cd76-5f53-4dbd-9167-ffedd51d01a5",
-    "message": "Disabled event \"Foundary\".",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "02442d97-e2d3-431b-a43a-070e15af4319"
-    },
-    "timestamp": "2026-03-22T15:50:02.573Z"
-  },
-  {
-    "id": "a97e54cf-0dd9-41db-9e57-5ffd6632f926",
-    "message": "Enabled event \"Foundary\".",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "02442d97-e2d3-431b-a43a-070e15af4319"
-    },
-    "timestamp": "2026-03-22T15:49:58.285Z"
-  },
-  {
-    "id": "1f7beccd-7bbb-4c05-95f4-041e2da26a0d",
-    "message": "Updated strike configuration.",
+    "id": "b48d5ba6-fee1-414d-9257-1ec5e3adff88",
+    "message": "Removed strike from user 1477371037120200724.",
     "level": "info",
     "source": "strikes",
-    "meta": {},
-    "timestamp": "2026-03-22T15:49:19.781Z"
-  },
-  {
-    "id": "576f614a-b777-40d6-a918-bc783ee265cb",
-    "message": "Updated auto role settings.",
-    "level": "info",
-    "source": "autorole",
-    "meta": {},
-    "timestamp": "2026-03-22T15:49:19.484Z"
-  },
-  {
-    "id": "e771832b-55a6-4942-b06f-23ed292e5316",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T15:48:52.288Z"
-  },
-  {
-    "id": "dc3bdde9-5087-4f00-9638-d172f622d559",
-    "message": "API server listening on port 3001.",
-    "level": "info",
-    "source": "server",
-    "meta": {},
-    "timestamp": "2026-03-22T15:48:16.790Z"
-  },
-  {
-    "id": "100089b5-bdb4-4e29-aaf4-ce9f9a52ebc1",
-    "message": "Enabled event \"Harbor\".",
-    "level": "info",
-    "source": "events",
     "meta": {
-      "id": "b274cd68-7f2d-4164-8776-f825ca2c3b57"
+      "user_id": "1477371037120200724"
     },
-    "timestamp": "2026-03-22T14:28:44.727Z"
+    "timestamp": "2026-03-23T17:14:59.361Z"
   },
   {
-    "id": "9cbcad02-4d8b-4bf1-a6b6-f5830678644b",
-    "message": "Turned off the welcome system.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T14:28:27.747Z"
-  },
-  {
-    "id": "c6867d05-89bb-446e-a998-82248c6b7c24",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T14:26:02.583Z"
-  },
-  {
-    "id": "417bb57e-3e0f-4de9-8e76-48463479b182",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T14:20:43.912Z"
-  },
-  {
-    "id": "06871816-f7fe-4b45-96da-265009e3c3f9",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T13:31:40.966Z"
-  },
-  {
-    "id": "c71f87de-3dfd-4458-8b2e-cfc4f7c958d5",
-    "message": "Dashboard session closed.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T13:31:34.814Z"
-  },
-  {
-    "id": "84015dae-7bbb-4bcb-baec-a11c8ed8f03d",
-    "message": "Reset weekly activity stats.",
+    "id": "354c9bdc-44dd-420e-b0aa-e142b67ab9a7",
+    "message": "Added strike to user 1477371037120200724.",
     "level": "warning",
-    "source": "activity",
-    "meta": {},
-    "timestamp": "2026-03-22T11:58:48.347Z"
+    "source": "strikes",
+    "meta": {
+      "user_id": "1477371037120200724"
+    },
+    "timestamp": "2026-03-23T17:14:47.380Z"
   },
   {
-    "id": "3134a3e3-ab22-4f46-8cf2-e5d7db83146a",
-    "message": "Reset weekly activity stats.",
+    "id": "6dbc600f-7bfe-451d-bf0c-37a5c6e68578",
+    "message": "Updated notification settings.",
+    "level": "info",
+    "source": "notifications",
+    "meta": {},
+    "timestamp": "2026-03-23T17:14:17.628Z"
+  },
+  {
+    "id": "aedc838c-ff28-4d56-b961-b3c112e2cada",
+    "message": "Updated Discord log settings.",
+    "level": "info",
+    "source": "settings",
+    "meta": {},
+    "timestamp": "2026-03-23T17:12:57.958Z"
+  },
+  {
+    "id": "1846f359-17d9-4ca5-a22a-2ca05d8be3b4",
+    "message": "Updated Discord log settings.",
+    "level": "info",
+    "source": "settings",
+    "meta": {},
+    "timestamp": "2026-03-23T17:12:54.557Z"
+  },
+  {
+    "id": "cdbd37ad-d13f-4a8a-859e-5329dbb029f0",
+    "message": "Removed strike from user 1477371037120200724.",
+    "level": "info",
+    "source": "strikes",
+    "meta": {
+      "user_id": "1477371037120200724"
+    },
+    "timestamp": "2026-03-23T17:12:33.029Z"
+  },
+  {
+    "id": "325f7f65-28c0-47fe-a42e-ec9492ba6400",
+    "message": "Added strike to user 1477371037120200724.",
     "level": "warning",
-    "source": "activity",
-    "meta": {},
-    "timestamp": "2026-03-22T11:58:05.791Z"
-  },
-  {
-    "id": "9454be00-c511-4f65-a9aa-2d8d20b5125f",
-    "message": "Created event \"Mention Role Check\".",
-    "level": "info",
-    "source": "events",
+    "source": "strikes",
     "meta": {
-      "id": "fd23fb86-82e2-441a-b3d5-91e2dbfc887a"
+      "user_id": "1477371037120200724"
     },
-    "timestamp": "2026-03-22T11:58:05.768Z"
+    "timestamp": "2026-03-23T17:12:18.149Z"
   },
   {
-    "id": "76a734e0-6f83-4ec9-8d37-92fda69449ab",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:57:58.670Z"
-  },
-  {
-    "id": "1ca3d9b8-979d-4ee0-ac8d-201d64b0fa67",
+    "id": "6d94d979-f2ea-4dbf-9431-8d1ae20aba95",
     "message": "Dashboard login successful.",
     "level": "info",
     "source": "auth",
     "meta": {},
-    "timestamp": "2026-03-22T11:57:58.214Z"
+    "timestamp": "2026-03-23T17:11:33.520Z"
   },
   {
-    "id": "0e07c2f8-9fcd-49f6-bf3d-0c80b2009ed7",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:57:44.292Z"
-  },
-  {
-    "id": "ba936550-6a5d-4c16-99cd-773add7c4845",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:57:09.141Z"
-  },
-  {
-    "id": "19ce304b-a5f4-4544-abef-ac7a0af77144",
-    "message": "API server listening on port 3001.",
-    "level": "info",
-    "source": "server",
-    "meta": {},
-    "timestamp": "2026-03-22T11:55:53.562Z"
-  },
-  {
-    "id": "807cdabc-c17e-4778-ac14-71b668cb96c4",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:50:17.152Z"
-  },
-  {
-    "id": "c8212160-208a-4d64-b6f1-9378b9592db5",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:47:33.331Z"
-  },
-  {
-    "id": "8facd34e-f79b-40d2-8a9d-4bcc4f55871b",
-    "message": "API server listening on port 3001.",
-    "level": "info",
-    "source": "server",
-    "meta": {},
-    "timestamp": "2026-03-22T11:47:14.703Z"
-  },
-  {
-    "id": "7c32e41b-4759-46c3-a7e9-f581c75322eb",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:24:03.880Z"
-  },
-  {
-    "id": "c6f674c6-fc1a-4e80-8ef2-f4920ae57d82",
-    "message": "Dashboard session closed.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:22:25.894Z"
-  },
-  {
-    "id": "a81ba782-e8be-435b-9fb4-761ed07889c3",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:21:06.150Z"
-  },
-  {
-    "id": "dd0b0ac7-2aa2-4857-81a5-c72c7e52d296",
-    "message": "Updated the welcome channel.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:21:04.384Z"
-  },
-  {
-    "id": "1aa3bd31-dfed-45d2-8ff5-0250e4c0d566",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:20:55.418Z"
-  },
-  {
-    "id": "fb26b64e-4b2a-4feb-96e0-f0d77fbdf964",
-    "message": "Updated the welcome channel.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:20:52.369Z"
-  },
-  {
-    "id": "06c9952b-43c9-49a4-a9e5-2d4b4e289da9",
-    "message": "Deleted event \"QA Sync Check\".",
-    "level": "warning",
-    "source": "events",
-    "meta": {
-      "id": "b03f86b8-f263-4696-8530-b2e2cdfde08a"
-    },
-    "timestamp": "2026-03-22T11:20:14.416Z"
-  },
-  {
-    "id": "0d46dc09-a01a-4881-ba5a-5714911eda5e",
-    "message": "Created event \"QA Sync Check\".",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "b03f86b8-f263-4696-8530-b2e2cdfde08a"
-    },
-    "timestamp": "2026-03-22T11:20:14.379Z"
-  },
-  {
-    "id": "ea6089af-b6a7-41f9-84c6-a07b52412d28",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:20:07.299Z"
-  },
-  {
-    "id": "26fad2d6-7027-4f0c-97ca-e7bb753f1f38",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:20:07.187Z"
-  },
-  {
-    "id": "7f744fbb-3d21-4f70-b4bc-54b2c9da7143",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:19:56.304Z"
-  },
-  {
-    "id": "a5e7f597-302c-471a-ae82-ea01037f2314",
-    "message": "Updated the welcome channel.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:19:55.353Z"
-  },
-  {
-    "id": "1b661f21-797c-4b83-9639-2715e0c36bd1",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:19:46.016Z"
-  },
-  {
-    "id": "4caa3f50-c08a-4084-98e6-b5094df0af3e",
-    "message": "API server listening on port 3001.",
-    "level": "info",
-    "source": "server",
-    "meta": {},
-    "timestamp": "2026-03-22T11:19:21.649Z"
-  },
-  {
-    "id": "17176623-4c9a-467f-889e-67f007959b88",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:18:20.715Z"
-  },
-  {
-    "id": "d551599d-602f-4ada-99f3-d663f1dad2d5",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:18:12.406Z"
-  },
-  {
-    "id": "b1c1939a-8472-4d11-9d68-7bb22091ec54",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:17:37.723Z"
-  },
-  {
-    "id": "b40793f0-a528-4d71-bcab-860a24e8ac42",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:16:45.893Z"
-  },
-  {
-    "id": "f213af5c-eb0d-4cd1-aabe-7c650a910b7d",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:16:28.114Z"
-  },
-  {
-    "id": "88522b65-adee-4631-a9a0-e387e076de6e",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:16:28.093Z"
-  },
-  {
-    "id": "bc72344b-0c7c-45cb-8825-285d8ae58273",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:12:54.978Z"
-  },
-  {
-    "id": "2edb628d-2e3e-4585-806a-47089451b0fc",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:12:54.945Z"
-  },
-  {
-    "id": "51cfd773-3b13-4c97-ae13-cf91f4452f42",
-    "message": "Deleted event \"QA Sync Check\".",
-    "level": "warning",
-    "source": "events",
-    "meta": {
-      "id": "211a0e26-1ac7-451c-bcb2-63f2ddf7d4ad"
-    },
-    "timestamp": "2026-03-22T11:11:53.452Z"
-  },
-  {
-    "id": "656761df-3167-433b-aef2-59491d962998",
-    "message": "Created event \"QA Sync Check\".",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "211a0e26-1ac7-451c-bcb2-63f2ddf7d4ad"
-    },
-    "timestamp": "2026-03-22T11:11:53.419Z"
-  },
-  {
-    "id": "0197058b-226f-44eb-be5e-531b3474a1f3",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:11:46.372Z"
-  },
-  {
-    "id": "5d79588c-0633-4cb6-995b-6502a9101a34",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:11:46.308Z"
-  },
-  {
-    "id": "e2062c2f-1300-49df-ade6-59c7b53d7acf",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:11:29.249Z"
-  },
-  {
-    "id": "1f1b0c43-c386-4276-ba8a-cf6ae5c47538",
-    "message": "Updated the welcome channel.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:11:28.064Z"
-  },
-  {
-    "id": "b1868943-bcdc-43b2-81fb-85a3e60e5390",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:11:27.554Z"
-  },
-  {
-    "id": "6918ae49-bc41-4e73-a447-026ee7c5c203",
-    "message": "Turned on the welcome system.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:11:25.905Z"
-  },
-  {
-    "id": "e63e0469-2a4e-4794-95fb-2ad5ab813760",
-    "message": "Turned off the welcome system.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:11:24.262Z"
-  },
-  {
-    "id": "d81e1d52-ec39-4bbd-908c-01862e50e652",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:11:18.927Z"
-  },
-  {
-    "id": "aee7ea34-c5fe-46e0-b35d-fd80e78464aa",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:11:18.809Z"
-  },
-  {
-    "id": "c351198a-bb68-4ea9-b060-eccb6d9f9223",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:11:08.325Z"
-  },
-  {
-    "id": "ef708ecd-8e37-47d1-8571-4332a10e88e3",
-    "message": "Queued a welcome preview message.",
-    "level": "info",
-    "source": "welcome",
-    "meta": {},
-    "timestamp": "2026-03-22T11:10:51.232Z"
-  },
-  {
-    "id": "d0740917-b879-42b0-853d-2fd16d0ae99f",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:10:51.064Z"
-  },
-  {
-    "id": "8b1abf38-e375-4d03-a93e-c18768773270",
-    "message": "Created event \"Test\".",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "b3439c33-70e0-40cc-81d3-f63e10e85a34"
-    },
-    "timestamp": "2026-03-22T11:10:30.883Z"
-  },
-  {
-    "id": "0f12f269-981a-48a6-aafb-a7c677a96d9c",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:10:28.587Z"
-  },
-  {
-    "id": "d51bdcfc-b6d6-43a7-a62a-2fa3d0a29338",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:09:46.743Z"
-  },
-  {
-    "id": "0f6cf8db-c1b8-4af6-8a16-baf992159063",
-    "message": "API server listening on port 3001.",
-    "level": "info",
-    "source": "server",
-    "meta": {},
-    "timestamp": "2026-03-22T11:09:34.374Z"
-  },
-  {
-    "id": "9baf44c7-10a9-40cc-8ee3-8e9d46eadff5",
-    "message": "Disabled event \"Foundary\".",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "02442d97-e2d3-431b-a43a-070e15af4319"
-    },
-    "timestamp": "2026-03-22T11:09:18.697Z"
-  },
-  {
-    "id": "90ca15e2-d109-4c57-a6c8-389ad35f5946",
-    "message": "Disabled event \"Harbor\".",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "b274cd68-7f2d-4164-8776-f825ca2c3b57"
-    },
-    "timestamp": "2026-03-22T11:09:18.012Z"
-  },
-  {
-    "id": "3ddf9838-8e57-40d6-9e0e-ca17c09167a2",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T11:08:39.920Z"
-  },
-  {
-    "id": "7de1216b-74fa-41ca-8af0-d9229a03b889",
+    "id": "81f1d0b8-3abc-453e-968f-067d53fa007e",
     "message": "Failed dashboard login attempt.",
     "level": "warning",
     "source": "auth",
     "meta": {},
-    "timestamp": "2026-03-22T11:08:37.284Z"
+    "timestamp": "2026-03-23T17:11:28.118Z"
   },
   {
-    "id": "55fe4072-6e4c-4047-9887-b85ad05538e1",
-    "message": "API server listening on port 3001.",
-    "level": "info",
-    "source": "server",
-    "meta": {},
-    "timestamp": "2026-03-22T10:58:31.275Z"
-  },
-  {
-    "id": "dcdb92d5-e024-4dfc-b098-e63101d59acd",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T10:55:06.322Z"
-  },
-  {
-    "id": "b55e69e8-3579-4b53-a471-d37730657729",
-    "message": "Dashboard session closed.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T10:55:02.975Z"
-  },
-  {
-    "id": "520ac22d-8df5-4ece-8955-52af9ad0a33a",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T10:29:12.915Z"
-  },
-  {
-    "id": "1d6bc73f-9192-4ba5-abe6-4fd91b865bd5",
-    "message": "Dashboard session closed.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T10:29:08.897Z"
-  },
-  {
-    "id": "9f526739-dafd-48b5-a298-14af9528045e",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T10:28:04.571Z"
-  },
-  {
-    "id": "274e4e67-e54a-485c-9d76-329f4ef6bd41",
-    "message": "API server listening on port 3001.",
-    "level": "info",
-    "source": "server",
-    "meta": {},
-    "timestamp": "2026-03-22T10:27:54.753Z"
-  },
-  {
-    "id": "c8be7594-ba91-455e-b13d-7340e31adfb2",
-    "message": "Event enabled: Weapons Factory.",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "35ac835c-c3de-4295-a4cd-de91dda08941"
-    },
-    "timestamp": "2026-03-22T10:21:10.893Z"
-  },
-  {
-    "id": "53dbc202-beb2-4929-8dda-c81eee848069",
-    "message": "Event updated: Test.",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "5c916a2c-dd3d-49a9-9810-d92af028485a"
-    },
-    "timestamp": "2026-03-22T10:19:22.073Z"
-  },
-  {
-    "id": "4a3d4d59-aabb-430b-8126-1b612ef40d5f",
-    "message": "Event created: Test at 15:55.",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "5c916a2c-dd3d-49a9-9810-d92af028485a"
-    },
-    "timestamp": "2026-03-22T10:19:09.050Z"
-  },
-  {
-    "id": "e8009fea-3c26-47bd-9bf2-42591ca720b2",
-    "message": "Event updated: Weapons Factory.",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "35ac835c-c3de-4295-a4cd-de91dda08941"
-    },
-    "timestamp": "2026-03-22T10:18:34.102Z"
-  },
-  {
-    "id": "e73ab4d8-301f-497e-b4d6-bebb190f378c",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T10:18:16.226Z"
-  },
-  {
-    "id": "5bb19d41-06ec-443a-a14b-dbad11c10d49",
-    "message": "Event deleted: API Verification Event.",
+    "id": "6387323a-902d-4667-a168-7b6a187e6037",
+    "message": "Failed dashboard login attempt.",
     "level": "warning",
-    "source": "events",
-    "meta": {
-      "id": "a8eda1a1-c86c-45e3-80a4-1b6828a9d7d8"
-    },
-    "timestamp": "2026-03-22T10:12:36.173Z"
-  },
-  {
-    "id": "164eb501-d886-4fe0-93cb-6004a975a2b0",
-    "message": "Event created: API Verification Event at 23:45.",
-    "level": "info",
-    "source": "events",
-    "meta": {
-      "id": "a8eda1a1-c86c-45e3-80a4-1b6828a9d7d8"
-    },
-    "timestamp": "2026-03-22T10:12:36.005Z"
-  },
-  {
-    "id": "9f163ee7-49da-4ab8-b383-ae00c2d00c20",
-    "message": "Dashboard login successful.",
-    "level": "info",
     "source": "auth",
     "meta": {},
-    "timestamp": "2026-03-22T10:12:35.968Z"
+    "timestamp": "2026-03-23T17:11:22.585Z"
   },
   {
-    "id": "8aa27883-46f0-4d21-8c1d-4e62394ebc04",
-    "message": "Dashboard login successful.",
-    "level": "info",
+    "id": "daf498fd-914b-49f2-b5ca-77ee07597690",
+    "message": "Failed dashboard login attempt.",
+    "level": "warning",
     "source": "auth",
     "meta": {},
-    "timestamp": "2026-03-22T10:12:23.732Z"
+    "timestamp": "2026-03-23T17:11:17.329Z"
   },
   {
-    "id": "8d227911-8b0b-4abc-95f0-37287794ce79",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T10:12:23.718Z"
-  },
-  {
-    "id": "9e78dce2-ce6f-439d-af12-70a4f56560ec",
+    "id": "5ab484b6-3b0c-4850-ab13-9ab121d02b8c",
     "message": "API server listening on port 3001.",
     "level": "info",
     "source": "server",
     "meta": {},
-    "timestamp": "2026-03-22T10:12:03.287Z"
+    "timestamp": "2026-03-23T17:10:52.334Z"
   },
   {
-    "id": "9a4e15c8-664c-4ee7-acf5-7fba776a6f36",
-    "message": "Dashboard login successful.",
-    "level": "info",
+    "id": "584edb15-4c3f-47ee-a797-c3e25874431d",
+    "message": "Bot exited with code 1. Re-spawning in 30s...",
+    "level": "error",
+    "source": "bot",
+    "meta": {},
+    "timestamp": "2026-03-23T17:05:15.812Z"
+  },
+  {
+    "id": "f7fc302c-8626-41f1-9e30-04291592286d",
+    "message": "Failed dashboard login attempt.",
+    "level": "warning",
     "source": "auth",
     "meta": {},
-    "timestamp": "2026-03-22T10:10:37.048Z"
+    "timestamp": "2026-03-23T17:04:38.003Z"
   },
   {
-    "id": "4b9c0cec-d901-4a87-b9f6-50ed7f079de8",
-    "message": "Dashboard login successful.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-22T10:10:37.031Z"
-  },
-  {
-    "id": "786aeff8-a801-4733-a1ad-c2ddc8fa55f7",
+    "id": "2ff1fa98-0752-4510-af13-4f639ffff882",
     "message": "API server listening on port 3001.",
     "level": "info",
     "source": "server",
     "meta": {},
-    "timestamp": "2026-03-22T10:10:12.759Z"
+    "timestamp": "2026-03-23T17:04:18.960Z"
   },
   {
-    "id": "3baa918e-f030-4210-b7ca-d63eaf64f71f",
-    "message": "API server listening on port 3001.",
+    "id": "f04633a1-c3ff-469e-b77f-a79b2a4c0f3b",
+    "message": "Logs cleared successfully.",
     "level": "info",
-    "source": "server",
+    "source": "system",
     "meta": {},
-    "timestamp": "2026-03-22T10:09:34.217Z"
+    "timestamp": "2026-03-23T17:04:04.092Z"
   }
 ]

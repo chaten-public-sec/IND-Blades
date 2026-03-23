@@ -68,8 +68,8 @@ export default function StrikePage() {
         strike_mapping: strikeMapping,
       });
       setStrikeConfig(r.data?.config || strikeConfig);
-      showToast('Strike configuration saved.', 'success');
-    } catch (err) { handleError(err, 'Failed to save configuration.'); }
+      showToast('success', 'Strike configuration saved', 'strike-config');
+    } catch (err) { handleError(err, 'Failed to save configuration'); }
     finally { setConfigSaving(false); }
   };
 
@@ -104,6 +104,7 @@ export default function StrikePage() {
     setAddSaving(true);
     try {
       await api.post('/api/strikes/add', { user_id: addUserId, reason: addReason.trim() });
+      showToast('success', 'Strike issued successfully', 'strike-add');
       setAddOpen(false);
       setAddUserId('');
       setAddReason('');
@@ -116,6 +117,7 @@ export default function StrikePage() {
     setRemoveSaving(true);
     try {
       await api.post('/api/strikes/remove', { user_id: removeTarget.userId, index: removeTarget.index });
+      showToast('success', 'Strike removed successfully', 'strike-remove');
       setRemoveOpen(false);
       setRemoveTarget(null);
       if (detailUser && detailUser.id === removeTarget.userId) {
@@ -300,8 +302,8 @@ export default function StrikePage() {
                          </Button>
                          <Button
                            size="sm"
-                           variant="ghost"
-                           className="h-8 w-8 p-0 text-red-500/70 hover:text-red-500 hover:bg-red-500/10 opacity-100"
+                           variant="danger"
+                           className="h-8 gap-1.5 px-3 text-[10px] font-bold uppercase tracking-wider opacity-100"
                            onClick={() => {
                              if (user.strikes?.length > 0) {
                                openRemoveDialog(user.id, user.strikes.length - 1, user.strikes[user.strikes.length - 1].reason);
@@ -309,7 +311,8 @@ export default function StrikePage() {
                            }}
                            disabled={!user.strikes || user.strikes.length === 0}
                          >
-                           <Trash2 className="h-4 w-4" />
+                           <Trash2 className="h-3.5 w-3.5" />
+                           Remove Strike
                          </Button>
                       </div>
                     </TableCell>
@@ -468,11 +471,12 @@ export default function StrikePage() {
                           </div>
                           <Button
                             size="sm"
-                            variant="ghost"
-                            className="h-9 w-9 p-0 text-red-200 bg-red-500/10 opacity-100"
+                            variant="danger"
+                            className="h-9 gap-2 px-4 text-[10px] font-bold uppercase tracking-widest opacity-100"
                             onClick={() => openRemoveDialog(currentDetailUser.id, i, strike.reason)}
                           >
-                            <Trash2 className="h-5 w-5" />
+                            <Trash2 className="h-4 w-4" />
+                            Remove Strike
                           </Button>
                         </div>
                       </div>

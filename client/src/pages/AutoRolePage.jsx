@@ -39,7 +39,7 @@ export default function AutoRolePage() {
       });
 
       setAutorole(autoroleRes.data?.config || {});
-      showToast('Auto role settings saved.');
+      showToast('success', 'Auto role settings saved', 'autorole-save');
     } catch (err) { handleError(err, 'Failed to save.'); }
     finally { setSaving(false); }
   };

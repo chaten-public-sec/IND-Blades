@@ -20,7 +20,7 @@ export default function WelcomePage() {
       const nextEnabled = !config.enabled;
       const r = await api.post('/api/welcome/toggle', { enabled: nextEnabled });
       setConfig(r.data?.config || {});
-      showToast(nextEnabled ? 'Welcome system enabled.' : 'Welcome system disabled.', nextEnabled ? 'success' : 'info');
+      showToast(nextEnabled ? 'success' : 'info', nextEnabled ? 'Welcome system enabled' : 'Welcome system disabled', 'welcome-toggle');
     } catch (err) { handleError(err, 'Failed to update system status.'); }
     finally { setSaving(false); }
   };
@@ -30,7 +30,7 @@ export default function WelcomePage() {
     try {
       const r = await api.post('/api/welcome/channel', { channel_id: channelInput || null });
       setConfig(r.data?.config || {});
-      showToast('Welcome channel updated.');
+      showToast('success', 'Welcome settings updated', 'welcome-channel');
     } catch (err) { handleError(err, 'Failed to update.'); }
     finally { setSaving(false); }
   };
@@ -38,7 +38,7 @@ export default function WelcomePage() {
   const sendPreview = async () => {
     try {
       await api.post('/api/welcome/preview');
-      showToast('Preview sent to Discord.');
+      showToast('success', 'Preview sent to Discord', 'welcome-preview');
     } catch (err) { handleError(err, 'Failed to send preview.'); }
   };
 

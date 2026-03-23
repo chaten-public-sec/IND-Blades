@@ -146,5 +146,101 @@
     "status": "completed",
     "created_at": "2026-03-22T14:26:02.582Z",
     "completed_at": "2026-03-22T14:26:13.428284+00:00"
+  },
+  {
+    "id": "1c512dd9-40a4-426c-9b57-ed09234e011a",
+    "type": "strike_removed",
+    "payload": {
+      "user_id": "1213688605168635945",
+      "strike_count": 1
+    },
+    "status": "done",
+    "created_at": "2026-03-23T16:53:12.554Z",
+    "completed_at": "2026-03-23T16:53:12.886922+00:00"
+  },
+  {
+    "id": "1f79f702-e4f0-4d4a-afb2-dd5044d523e4",
+    "type": "strike_removed",
+    "payload": {
+      "user_id": "1213688605168635945",
+      "strike_count": 0
+    },
+    "status": "done",
+    "created_at": "2026-03-23T16:53:21.857Z",
+    "completed_at": "2026-03-23T16:53:22.887272+00:00"
+  },
+  {
+    "id": "e8f9bfd8-e8b1-40fb-b9ad-2877b8a6bb43",
+    "type": "event_deleted",
+    "payload": {
+      "id": "03b57a0c-9f17-4d3c-9f19-7f8c882e50bc",
+      "name": "Harbor"
+    },
+    "status": "done",
+    "created_at": "2026-03-23T16:53:42.362Z",
+    "completed_at": "2026-03-23T16:53:42.891239+00:00"
+  },
+  {
+    "id": "ae13f4ad-e44c-44f3-94ea-3f33e02951bf",
+    "type": "strike_added",
+    "payload": {
+      "user_id": "1213688605168635945",
+      "reason": "1",
+      "strike_count": 1
+    },
+    "status": "pending",
+    "created_at": "2026-03-23T16:59:11.382Z"
+  },
+  {
+    "id": "f1aa2ad5-2cc5-421f-b217-2750429f3038",
+    "type": "strike_removed",
+    "payload": {
+      "user_id": "1213688605168635945",
+      "strike_count": 0
+    },
+    "status": "pending",
+    "created_at": "2026-03-23T16:59:20.996Z"
+  },
+  {
+    "id": "647d4db4-c9fc-40f5-aea6-74565040c59a",
+    "type": "strike_added",
+    "payload": {
+      "user_id": "1477371037120200724",
+      "reason": "Missed event",
+      "strike_count": 1
+    },
+    "status": "pending",
+    "created_at": "2026-03-23T17:12:18.147Z"
+  },
+  {
+    "id": "c6f051fa-97f5-42c3-8682-45354047685f",
+    "type": "strike_removed",
+    "payload": {
+      "user_id": "1477371037120200724",
+      "strike_count": 0
+    },
+    "status": "pending",
+    "created_at": "2026-03-23T17:12:33.026Z"
+  },
+  {
+    "id": "1a592ec5-1054-462d-a1d1-2d52fb0e204f",
+    "type": "strike_added",
+    "payload": {
+      "user_id": "1477371037120200724",
+      "reason": ".",
+      "strike_count": 1
+    },
+    "status": "pending",
+    "created_at": "2026-03-23T17:14:47.378Z"
+  },
+  {
+    "id": "fc849093-5646-42bf-ac52-637ab312fc95",
+    "type": "strike_removed",
+    "payload": {
+      "user_id": "1477371037120200724",
+      "strike_count": 0
+    },
+    "status": "pending",
+    "created_at": "2026-03-23T17:14:59.359Z"
   }
 ]

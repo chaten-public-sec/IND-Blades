@@ -39,20 +39,14 @@ def get_activity_config():
     return {"afk_channel_id": c.get("afk_channel_id")}
 
 
-def get_discord_log_settings():
-    """New multi-category Discord logs. Bot uses this when __discord_logs__ exists."""
+def get_discord_logs_v2():
+    """Version 2: List of custom categories with multi-log selection."""
     data = load_data()
-    dl = data.get("__discord_logs__", {})
-    if not dl or not isinstance(dl.get("categories"), dict):
+    dl = data.get("__logs_v2__", {})
+    if not dl or not isinstance(dl.get("categories"), list):
         return None
     return {
         "enabled": bool(dl.get("enabled", False)),
-        "categories": {
-            k: {
-                "enabled": bool(v.get("enabled", False)),
-                "channel_id": v.get("channel_id"),
-            }
-            for k, v in dl.get("categories", {}).items()
-            if isinstance(v, dict)
-        },
+        "categories": dl.get("categories", [])
     }
+

@@ -15,57 +15,35 @@
   },
   "__autorole__": {
     "join_role_id": null,
-    "bindings": [],
-    "strike_mapping": {
-      "1": 1478028516036448291,
-      "2": 1485193244609351801,
-      "3": 1478101837361188986
-    }
+    "bindings": []
   },
   "__notifications__": {
-    "enabled": false,
-    "user_ids": []
+    "enabled": true,
+    "user_ids": [
+      "1213688605168635945"
+    ]
   },
   "__strikes__": {
     "1213688605168635945": {
       "user_id": 1213688605168635945,
-      "strikes": [
-        {
-          "reason": "Missed Event: Harbor",
-          "timestamp": "2026-03-22T15:48:31.347654+00:00",
-          "expires_at": "2026-03-29T15:48:31.347664+00:00"
-        },
-        {
-          "reason": "Missed Event: Foundary",
-          "timestamp": "2026-03-22T15:51:01.072037+00:00",
-          "expires_at": "2026-03-29T15:51:01.072053+00:00"
-        }
-      ],
-      "strike_count": 2
+      "strikes": [],
+      "strike_count": 0
+    },
+    "1477371037120200724": {
+      "user_id": 1477371037120200724,
+      "strikes": [],
+      "strike_count": 0
     }
   },
   "__strikes_config__": {
-    "expiry_days": 7
+    "expiry_days": 7,
+    "strike_mapping": {}
   },
-  "03b57a0c-9f17-4d3c-9f19-7f8c882e50bc": {
-    "id": "03b57a0c-9f17-4d3c-9f19-7f8c882e50bc",
-    "time": "21:40",
-    "desc": "Harbor",
-    "daily": true,
-    "attending": [],
-    "not_attending": [],
-    "vote_message_id": null,
-    "vote_message_map": {},
-    "last_vote_date": "2026-01-02",
-    "last_reminded_date": "2026-01-02",
-    "event_date": null,
-    "voting_closed": false,
-    "channel_id": 1478106725176447046,
-    "mention_role_id": 1478101922597703720,
+  "__logs_v2__": {
     "enabled": false,
-    "delivery_mode": "server",
-    "creator_id": null,
-    "target_type": "channel",
-    "target_id": 1478106725176447046
+    "categories": []
+  },
+  "__activity_config__": {
+    "afk_channel_id": null
   }
 }

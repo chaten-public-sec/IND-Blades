@@ -24,10 +24,8 @@ export function useDashboard() {
   const navigate = useNavigate();
   const socketRef = useRef(null);
 
-  const showToast = useCallback((message, type = 'success') => {
-    if (type === 'error') sonnerToast.error(message);
-    else if (type === 'info') sonnerToast.info(message);
-    else sonnerToast.success(message);
+  const showToast = useCallback((type, message, id) => {
+    import('../lib/toast').then(m => m.showToast(type, message, id));
   }, []);
 
   const handleError = useCallback((error, fallback) => {
@@ -158,76 +156,38 @@ export function useDashboard() {
 
           switch (data.type) {
             case 'EVENT_CREATED':
-              if (data.payload?.event?.desc) showToast(`Event "${data.payload.event.desc}" created.`);
-              refreshEvents();
-              break;
             case 'EVENT_UPDATED':
-              if (data.payload?.event?.desc) showToast(`Event "${data.payload.event.desc}" updated.`);
-              refreshEvents();
-              break;
             case 'EVENT_DELETED':
-              if (data.payload?.name) showToast(`Event "${data.payload.name}" deleted.`);
-              refreshEvents();
-              break;
             case 'EVENT_PAUSED':
-              if (data.payload?.event?.desc) showToast(`Event "${data.payload.event.desc}" paused.`);
-              refreshEvents();
-              break;
             case 'EVENT_RESUMED':
-              if (data.payload?.event?.desc) showToast(`Event "${data.payload.event.desc}" resumed.`);
-              refreshEvents();
-              break;
             case 'EVENT_ATTENDANCE_UPDATED':
-              showToast('Attendance updated.');
               refreshEvents();
               break;
             case 'WELCOME_UPDATED':
-              showToast('Welcome settings updated.');
               refreshWelcome();
               break;
             case 'USER_UPDATED':
             case 'STRIKE_ADDED':
-              showToast('Strike added.');
-              refreshUsers();
-              break;
             case 'STRIKE_REMOVED':
-              showToast('Strike removed.');
-              refreshUsers();
-              break;
             case 'ROLE_UPDATED':
-              showToast('User roles updated.');
               refreshUsers();
               break;
             case 'LOG_UPDATED':
               refreshLogs();
               break;
             case 'AUTOROLE_UPDATED':
-              showToast('Auto role settings updated.');
               setAutorole(data.payload.config || { join_role_id: null, bindings: [], strike_mapping: {} });
               break;
             case 'NOTIFICATIONS_UPDATED':
-              showToast('Notification settings updated.');
               setNotifications(data.payload.config || { enabled: false, user_ids: [] });
               break;
             case 'STRIKE_CONFIG_UPDATED':
-              showToast('Strike configuration updated.');
               setStrikeConfig(data.payload || { expiry_days: 7 });
               break;
-            case 'LOG_SETTINGS_UPDATED':
-              showToast('Log settings updated.');
-              break;
-            case 'DISCORD_LOGS_UPDATED':
-              showToast('Discord log settings updated.');
-              break;
-            case 'ACTIVITY_CONFIG_UPDATED':
-              setActivityConfig(data.payload?.config || { afk_channel_id: null });
-              showToast('Activity config updated.');
-              break;
             case 'BOT_STATUS_UPDATED':
+            case 'BOT_STATUS':
               const isConnected = data.payload?.connected;
               setBotStatus(isConnected ? 'connected' : 'disconnected');
-              if (isConnected) showToast('Discord bot is back online.', 'info');
-              else showToast('Discord bot went offline.', 'error');
               break;
             case 'SYSTEM_REFRESH':
               refreshEvents();
