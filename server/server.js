@@ -942,7 +942,10 @@ app.use(
   })
 );
 
+let lastManualEmit = 0;
+
 function emitSystemUpdate(type, payload = {}) {
+  lastManualEmit = Date.now();
   io.emit('systemUpdate', { type, payload });
   // Legacy events for backward compatibility
   if (type.startsWith('EVENT_')) io.emit('eventsUpdated');
@@ -958,6 +961,7 @@ function emitDataRefresh() {
 
 fs.watchFile(REMINDERS_PATH, { interval: 1000 }, (current, previous) => {
   if (current.mtimeMs !== previous.mtimeMs) {
+    if (Date.now() - lastManualEmit < 1500) return; // Suppress redundant emit from dashboard action
     invalidateCatalogCaches();
     emitSystemUpdate('EVENT_UPDATED');
   }
@@ -965,6 +969,7 @@ fs.watchFile(REMINDERS_PATH, { interval: 1000 }, (current, previous) => {
 
 fs.watchFile(LOGS_PATH, { interval: 1000 }, (current, previous) => {
   if (current.mtimeMs !== previous.mtimeMs) {
+    if (Date.now() - lastManualEmit < 1500) return;
     emitSystemUpdate('LOG_UPDATED');
   }
 });
