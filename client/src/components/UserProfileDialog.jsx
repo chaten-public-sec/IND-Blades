@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { User, Mic, MessageSquare, Calendar, Trophy, Zap, AlertTriangle, ShieldCheck, History, Trash2, X } from 'lucide-react';
 
 function formatDuration(s) {
   const t = Number(s || 0);
@@ -36,6 +37,7 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
   const [addingStrike, setAddingStrike] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [reason, setReason] = useState('');
+  const [addErrors, setAddErrors] = useState({});
   const [removingIdx, setRemovingIdx] = useState(null);
 
   const userRoleIds = new Set(user.roles || []);
@@ -50,12 +52,19 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
 
   const strikes = user.strikes || [];
 
+  const validateAdd = () => {
+    const e = {};
+    if (!reason.trim()) e.reason = 'Mention the violation reason';
+    setAddErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
   const addStrike = useCallback(async () => {
-    if (!reason.trim()) return showToast('Provide a reason.');
+    if (!validateAdd()) return;
     setAddingStrike(true);
     try {
       await api.post('/api/strikes/add', { user_id: user.id, reason: reason.trim() });
-      showToast('Strike added.');
+      showToast('Strike issued successfully.', 'success');
       setAddOpen(false);
       setReason('');
     } catch (err) { handleError(err, 'Failed to add strike.'); }
@@ -79,13 +88,19 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
             <DialogTitle>Member Profile</DialogTitle>
           </DialogHeader>
           <DialogBody>
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400/30 to-teal-300/30 text-3xl font-bold shadow-lg">
-                {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+            <div className="relative flex flex-col items-center gap-5 pt-4">
+              <div className="relative">
+                 <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-800 text-4xl font-black border-2 border-white/5 shadow-2xl overflow-hidden">
+                    {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 to-transparent" />
+                 </div>
+                 <div className="absolute -bottom-1 -right-1 rounded-full bg-emerald-500 p-1.5 border-4 border-slate-900 shadow-lg">
+                    <ShieldCheck className="h-4 w-4 text-white" />
+                 </div>
               </div>
-              <div>
-                <h3 className="text-xl font-bold">{user.name || user.username}</h3>
-                {user.username && <p className="text-sm text-[var(--text-muted)]">@{user.username}</p>}
+              <div className="text-center">
+                <h3 className="text-2xl font-black text-[var(--text-main)] tracking-tight">{user.name || user.username}</h3>
+                <p className="text-xs font-mono text-[var(--text-muted)] mt-1">ID: {user.id}</p>
               </div>
             </div>
 
@@ -98,63 +113,84 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
               </div>
             )}
 
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <div className="surface-soft rounded-2xl p-4 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Voice Time</p>
-                <p className="mt-2 text-2xl font-bold">{formatDuration(user.voice_time)}</p>
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              <div className="rounded-3xl bg-white/[0.03] border border-white/5 p-4 transition-all hover:bg-white/[0.05]">
+                <div className="flex items-center gap-2 mb-1">
+                   <Mic className="h-3.5 w-3.5 text-cyan-400" />
+                   <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Voice Comm</p>
+                </div>
+                <p className="text-xl font-black text-cyan-400">{formatDuration(user.voice_time)}</p>
               </div>
-              <div className="surface-soft rounded-2xl p-4 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Messages</p>
-                <p className="mt-2 text-2xl font-bold">{user.messages || 0}</p>
+              <div className="rounded-3xl bg-white/[0.03] border border-white/5 p-4 transition-all hover:bg-white/[0.05]">
+                <div className="flex items-center gap-2 mb-1">
+                   <MessageSquare className="h-3.5 w-3.5 text-indigo-400" />
+                   <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Messages</p>
+                </div>
+                <p className="text-xl font-black text-indigo-400">{user.messages || 0}</p>
               </div>
-              <div className="surface-soft rounded-2xl p-4 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Joined</p>
-                <p className="mt-2 text-sm font-semibold">{formatDate(user.joined_at)}</p>
+              <div className="rounded-3xl bg-white/[0.03] border border-white/5 p-4 transition-all hover:bg-white/[0.05]">
+                <div className="flex items-center gap-2 mb-1">
+                   <Calendar className="h-3.5 w-3.5 text-amber-400" />
+                   <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Arrival Log</p>
+                </div>
+                <p className="text-xs font-bold text-[var(--text-main)]">{formatDate(user.joined_at).split(',')[0]}</p>
               </div>
-              <div className="surface-soft rounded-2xl p-4 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Rank</p>
-                <p className="mt-2 text-2xl font-bold text-gradient">#{rank || '—'}</p>
+              <div className="rounded-3xl bg-white/[0.03] border border-white/5 p-4 transition-all hover:bg-white/[0.05]">
+                <div className="flex items-center gap-2 mb-1">
+                   <Trophy className="h-3.5 w-3.5 text-emerald-400" />
+                   <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Global Rank</p>
+                </div>
+                <p className="text-xl font-black text-emerald-400">#{rank || '—'}</p>
               </div>
             </div>
 
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Strikes</p>
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
                 <div className="flex items-center gap-2">
-                  <Badge variant={user.strike_count > 0 ? "destructive" : "success"}>
-                    {user.strike_count || 0} Strikes
+                   <History className="h-4 w-4 text-red-400" />
+                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Violation History</h4>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant={user.strike_count > 0 ? "destructive" : "success"} className="h-6 px-3">
+                    {user.strike_count || 0} TOTAL
                   </Badge>
-                  <Button size="sm" variant="ghost" onClick={() => setAddOpen(true)}>+ Add</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setAddOpen(true)} className="h-7 w-7 p-0 rounded-lg hover:bg-white/5">
+                     <Zap className="h-4 w-4 text-amber-400" />
+                  </Button>
                 </div>
               </div>
               
               {strikes.length > 0 ? (
                 <div className="space-y-3">
                   {strikes.map((strike, i) => (
-                    <div key={i} className="surface-soft rounded-xl p-3 text-sm">
-                      <div className="flex justify-between items-start mb-1 gap-2">
-                        <span className="font-bold text-red-400">{strike.reason}</span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Badge variant={getTimeLeft(strike.expires_at) === 'Expired' ? 'danger' : 'warning'}>
+                    <div key={i} className="group relative overflow-hidden rounded-2xl border border-white/5 bg-white/3 p-4 transition-all hover:bg-white/5">
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="space-y-1">
+                           <p className="font-bold text-rose-500 text-sm">{strike.reason}</p>
+                           <p className="text-[10px] text-[var(--text-muted)] font-medium">Issued {formatDate(strike.timestamp)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getTimeLeft(strike.expires_at) === 'Expired' ? 'danger' : 'warning'} className="text-[9px]">
                             {getTimeLeft(strike.expires_at)}
                           </Badge>
                           <Button
                             size="sm"
-                            variant="danger"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-red-500/70 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={() => removeStrike(i)}
                             loading={removingIdx === i}
                           >
-                            ✕
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)]">Given on {formatDate(strike.timestamp)}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="surface-soft rounded-xl p-4 text-center text-sm text-[var(--text-muted)]">
-                  No active strikes. This user is in good standing!
+                <div className="flex flex-col items-center justify-center py-8 opacity-50 bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
+                   <ShieldCheck className="h-8 w-8 mb-2 text-emerald-500" />
+                   <p className="text-xs font-semibold">Zero incidents found.</p>
                 </div>
               )}
             </div>
@@ -170,15 +206,21 @@ export default function UserProfileDialog({ user, roles = [], roster = [], onClo
             <DialogDescription>Add a strike to {user.name || user.username}</DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-[var(--text-muted)]">Reason</label>
-              <input
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="e.g. Missed Event"
-                autoFocus
-                className="surface-soft h-11 w-full rounded-2xl px-4 text-sm text-[var(--text-main)] transition focus:border-cyan-300/30"
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className={`text-[10px] font-bold uppercase tracking-widest ${addErrors.reason ? 'text-red-400' : 'text-[var(--text-muted)]'}`}>Incident Description</Label>
+                <div className="relative">
+                  <input
+                    value={reason}
+                    onChange={(e) => { setReason(e.target.value); setAddErrors(p => ({ ...p, reason: '' })); }}
+                    placeholder="Briefly state the violation..."
+                    autoFocus
+                    className={`surface-soft h-12 w-full rounded-2xl pl-11 pr-4 text-sm text-[var(--text-main)] transition-all outline-none ${addErrors.reason ? 'border-red-500/50 bg-red-500/5' : 'focus:border-cyan-500/30'}`}
+                  />
+                  <AlertTriangle className={`absolute left-4 top-3.5 h-5 w-5 ${addErrors.reason ? 'text-red-400' : 'text-[var(--text-muted)]'}`} />
+                </div>
+                {addErrors.reason && <p className="text-[10px] font-medium text-red-400">{addErrors.reason}</p>}
+              </div>
             </div>
           </DialogBody>
           <DialogFooter>

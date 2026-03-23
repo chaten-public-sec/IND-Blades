@@ -50,12 +50,7 @@ export default function DashboardLayout() {
     <DashboardContext.Provider value={dashboard}>
       <div className="flex min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] transition-colors duration-300">
 
-        {/* Toast */}
-        {dashboard.toast && (
-          <div className="fixed bottom-6 right-6 z-[200] surface rounded-2xl px-5 py-3 text-sm font-medium shadow-lg animate-[fadeIn_0.2s_ease]">
-            {dashboard.toast}
-          </div>
-        )}
+
 
         {/* Mobile sidebar toggle */}
         <button
@@ -90,54 +85,54 @@ export default function DashboardLayout() {
                   <button
                     key={item.id}
                     onClick={() => { navigate(item.path); setSidebarOpen(false); }}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                    className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-200 ${
                       isActive
-                        ? 'bg-cyan-400/12 text-cyan-600 dark:text-cyan-100 shadow-[inset_0_1px_0_rgba(0,0,0,0.06)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
-                        : 'text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--text-main)]'
+                        ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.1)] border border-cyan-400/20'
+                        : 'text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-main)] border border-transparent'
                     }`}
                   >
-                    <item.icon className="h-4 w-4 shrink-0" />
+                    <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-cyan-400' : 'text-[var(--text-muted)] group-hover:text-cyan-400'}`} />
                     {item.label}
                   </button>
                 );
               })}
 
-              <div className="pt-4 mt-4 border-t border-[var(--border)]">
-                <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">System Logs</p>
+              <div className="pt-2">
+                <p className="px-4 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] opacity-50">Intelligence Logs</p>
                 {SYSTEM_LOGS_NAV.map((item) => {
                   const isActive = location.pathname === item.path;
                   return (
                     <button
                       key={item.id}
                       onClick={() => { navigate(item.path); setSidebarOpen(false); }}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                      className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-200 ${
                         isActive
-                          ? 'bg-cyan-400/12 text-cyan-600 dark:text-cyan-100'
-                          : 'text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--text-main)]'
+                          ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-400/20'
+                          : 'text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-main)] border border-transparent'
                       }`}
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
+                      <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-cyan-400' : 'text-[var(--text-muted)] group-hover:text-cyan-400'}`} />
                       {item.label}
                     </button>
                   );
                 })}
               </div>
 
-              <div className="pt-2">
-                <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Logs</p>
+              <div className="pt-4">
+                <p className="px-4 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] opacity-50">Discord Stream</p>
                 {DISCORD_LOGS_NAV.map((item) => {
                   const isActive = location.pathname === item.path;
                   return (
                     <button
                       key={item.id}
                       onClick={() => { navigate(item.path); setSidebarOpen(false); }}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                      className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-200 ${
                         isActive
-                          ? 'bg-cyan-400/12 text-cyan-600 dark:text-cyan-100'
-                          : 'text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[var(--text-main)]'
+                          ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-400/20'
+                          : 'text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-main)] border border-transparent'
                       }`}
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
+                      <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-cyan-400' : 'text-[var(--text-muted)] group-hover:text-cyan-400'}`} />
                       {item.label}
                     </button>
                   );

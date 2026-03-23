@@ -7,6 +7,8 @@ import { Badge } from '../components/ui/badge';
 import { SelectField } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '../components/ui/dialog';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/table';
+import { Label } from '../components/ui/label';
+import { Calendar, Clock, MapPin, Users, Zap, Trash2, Edit2, Play, Pause, AlertCircle } from 'lucide-react';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
@@ -47,6 +49,7 @@ export default function EventsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ ...emptyForm });
+  const [errors, setErrors] = useState({});
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   // Delete confirmation dialog
@@ -71,14 +74,24 @@ export default function EventsPage() {
       }
       return { ...f, [field]: value, ...overrides };
     });
+    setErrors(prev => ({ ...prev, [field]: '' }));
   }, []);
 
-  const openCreate = () => { setForm({ ...emptyForm }); setOpen(true); };
-  const openEdit = (e) => { setForm(buildForm(e)); setOpen(true); };
+  const openCreate = () => { setForm({ ...emptyForm }); setErrors({}); setOpen(true); };
+  const openEdit = (e) => { setForm(buildForm(e)); setErrors({}); setOpen(true); };
+
+  const validate = () => {
+    const e = {};
+    if (!form.name.trim()) e.name = 'Event name is required';
+    if (!form.targetId) e.targetId = 'Target destination is required';
+    if (form.mode === 'dm' && form.targetType === 'user' && !form.targetId) e.targetId = 'Select a user';
+    
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   const save = async () => {
-    if (!form.name.trim()) return showToast('Event name is required.');
-    if (!form.targetId) return showToast('Please select a target.');
+    if (!validate()) return;
     setSaving(true);
     try {
       const payload = {
@@ -141,7 +154,10 @@ export default function EventsPage() {
           <h2 className="text-2xl font-bold tracking-tight">Events</h2>
           <p className="mt-1 text-sm text-[var(--text-muted)]">Create and manage scheduled events.</p>
         </div>
-        <Button onClick={openCreate}>+ New Event</Button>
+        <Button onClick={openCreate} className="gap-2">
+          <Zap className="h-4 w-4" />
+          Create Event
+        </Button>
       </div>
 
       <Card>
@@ -163,9 +179,16 @@ export default function EventsPage() {
                 const status = getStatusInfo(event);
                 return (
                   <TableRow key={event.id}>
-                    <TableCell onClick={() => setSelectedEvent(event)} className="cursor-pointer hover:bg-white/5 transition-colors">
-                      <p className="font-semibold text-cyan-400 underline-offset-4 hover:underline">{event.desc}</p>
-                      <p className="mt-0.5 text-xs text-[var(--text-muted)]">{event.daily ? 'Daily' : 'Once'}</p>
+                    <TableCell onClick={() => setSelectedEvent(event)} className="cursor-pointer group">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-2 w-2 rounded-full ${status.variant === 'success' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
+                        <div>
+                          <p className="font-bold text-cyan-400 group-hover:underline underline-offset-4">{event.desc}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
+                            {event.daily ? 'Recurring Daily' : 'One-time Event'}
+                          </p>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="font-mono">{event.time}</TableCell>
                     <TableCell>
@@ -329,106 +352,132 @@ export default function EventsPage() {
             <DialogDescription>Configure event details and delivery.</DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-[var(--text-muted)]">Event Name</label>
-                <input
-                  value={form.name}
-                  onChange={(e) => update('name', e.target.value)}
-                  placeholder="e.g. Movie Night, Raid Session"
-                  autoFocus
-                  className="surface-soft h-11 w-full rounded-2xl px-4 text-sm text-[var(--text-main)] transition focus:border-cyan-300/30"
-                />
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]" htmlFor="event-name">
+                  Event Title
+                </Label>
+                <div className="relative">
+                  <input
+                    id="event-name"
+                    value={form.name}
+                    onChange={(e) => update('name', e.target.value)}
+                    placeholder="e.g. Competitive Scrims, Community Hangout"
+                    autoFocus
+                    className={`surface-soft h-12 w-full rounded-2xl pl-11 pr-4 text-sm text-[var(--text-main)] transition-all focus:ring-2 focus:ring-cyan-500/20 ${errors.name ? 'border-red-500/50 bg-red-500/5' : 'focus:border-cyan-500/30'}`}
+                  />
+                  <Calendar className={`absolute left-4 top-3.5 h-5 w-5 ${errors.name ? 'text-red-400' : 'text-[var(--text-muted)]'}`} />
+                </div>
+                {errors.name && <p className="flex items-center gap-1 text-[10px] font-medium text-red-400"><AlertCircle className="h-3 w-3" /> {errors.name}</p>}
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[var(--text-muted)]">Hour (IST)</label>
-                  <SelectField value={form.hour} onChange={(e) => update('hour', e.target.value)}>
-                    {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
-                  </SelectField>
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Schedule Time (IST)</Label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <SelectField value={form.hour} onChange={(e) => update('hour', e.target.value)} className="pl-10">
+                        {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                      </SelectField>
+                      <Clock className="absolute left-3.5 top-2.5 h-4 w-4 text-[var(--text-muted)]" />
+                    </div>
+                    <span className="text-[var(--text-muted)] font-bold">:</span>
+                    <div className="relative flex-1">
+                      <SelectField value={form.minute} onChange={(e) => update('minute', e.target.value)} className="pl-10">
+                        {MINUTES.map((m) => <option key={m} value={m}>{m}</option>)}
+                      </SelectField>
+                      <Clock className="absolute left-3.5 top-2.5 h-4 w-4 text-[var(--text-muted)]" />
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[var(--text-muted)]">Minute</label>
-                  <SelectField value={form.minute} onChange={(e) => update('minute', e.target.value)}>
-                    {MINUTES.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </SelectField>
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[var(--text-muted)]">Recurrence</label>
-                  <SelectField value={form.daily ? 'daily' : 'once'} onChange={(e) => update('daily', e.target.value === 'daily')}>
-                    <option value="once">Run Once</option>
-                    <option value="daily">Daily</option>
-                  </SelectField>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[var(--text-muted)]">Method</label>
-                  <SelectField value={form.mode} onChange={(e) => update('mode', e.target.value)}>
-                    <option value="server">Server Message</option>
-                    <option value="dm">Direct Message</option>
-                  </SelectField>
+                   <Label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Recurrence Type</Label>
+                   <SelectField value={form.daily ? 'daily' : 'once'} onChange={(e) => update('daily', e.target.value === 'daily')}>
+                     <option value="once">Run Once (Manual Reset)</option>
+                     <option value="daily">Daily Automatic</option>
+                   </SelectField>
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[var(--text-muted)]">Target Type</label>
-                  <SelectField value={form.targetType} onChange={(e) => update('targetType', e.target.value)}>
-                    {form.mode === 'server' && <option value="channel">Channel</option>}
-                    {form.mode === 'dm' && <option value="user">User</option>}
-                    {form.mode === 'dm' && <option value="role">Role (all members)</option>}
-                  </SelectField>
+              <div className="space-y-4 rounded-2xl border border-white/5 bg-white/3 p-4">
+                <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                   <MapPin className="h-4 w-4 text-cyan-400" />
+                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">Delivery Configuration</h4>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[var(--text-muted)]">Target</label>
-                  {form.targetType === 'channel' && (
-                    <SelectField value={form.targetId} onChange={(e) => update('targetId', e.target.value)}>
-                      <option value="" disabled>Select channel</option>
-                      {channels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Delivery Method</Label>
+                    <SelectField value={form.mode} onChange={(e) => update('mode', e.target.value)}>
+                      <option value="server">Server Message (Public)</option>
+                      <option value="dm">Direct Message (Private)</option>
                     </SelectField>
-                  )}
-                  {form.targetType === 'role' && (
-                    <SelectField value={form.targetId} onChange={(e) => update('targetId', e.target.value)}>
-                      <option value="" disabled>Select role</option>
-                      {roles.map((r) => <option key={r.id} value={r.id}>@{r.name}</option>)}
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Target Type</Label>
+                    <SelectField value={form.targetType} onChange={(e) => update('targetType', e.target.value)}>
+                      {form.mode === 'server' && <option value="channel">Internal Channel</option>}
+                      {form.mode === 'dm' && <option value="user">Specific User</option>}
+                      {form.mode === 'dm' && <option value="role">Member Group (Role)</option>}
                     </SelectField>
-                  )}
-                  {form.targetType === 'user' && (
-                    <SelectField value={form.targetId} onChange={(e) => update('targetId', e.target.value)}>
-                      <option value="" disabled>Select user</option>
-                      {roster.map((u) => <option key={u.id} value={u.id}>{u.name || u.username}</option>)}
-                    </SelectField>
-                  )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className={`text-[10px] font-bold uppercase tracking-widest ${errors.targetId ? 'text-red-400' : 'text-[var(--text-muted)]'}`}>
+                    Select Target {form.targetType === 'channel' ? 'Channel' : form.targetType === 'role' ? 'Role' : 'User'}
+                  </Label>
+                  <SelectField 
+                    value={form.targetId} 
+                    onChange={(e) => update('targetId', e.target.value)}
+                    className={errors.targetId ? 'border-red-500/50 bg-red-500/5' : ''}
+                  >
+                    <option value="" disabled>Choose an option...</option>
+                    {form.targetType === 'channel' && channels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                    {form.targetType === 'role' && roles.map((r) => <option key={r.id} value={r.id}>@{r.name}</option>)}
+                    {form.targetType === 'user' && roster.map((u) => <option key={u.id} value={u.id}>{u.name || u.username}</option>)}
+                  </SelectField>
+                  {errors.targetId && <p className="text-[10px] font-medium text-red-400">{errors.targetId}</p>}
                 </div>
               </div>
 
-              {form.mode === 'server' && (
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-[var(--text-muted)]">Mention Role (optional)</label>
-                  <SelectField value={form.mentionRoleId} onChange={(e) => update('mentionRoleId', e.target.value)}>
-                    <option value="">None</option>
-                    {roles.map((r) => <option key={r.id} value={r.id}>@{r.name}</option>)}
-                  </SelectField>
+              <div className="space-y-4 rounded-2xl border border-white/5 bg-white/3 p-4">
+                <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+                   <Users className="h-4 w-4 text-emerald-400" />
+                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Advanced Settings</h4>
                 </div>
-              )}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-[var(--text-muted)]">Event VC Channel</label>
-                <SelectField value={form.vcChannelId} onChange={(e) => update('vcChannelId', e.target.value)}>
-                  <option value="">None</option>
-                  {((channels || []).filter((c) => c.type === 2).length ? (channels || []).filter((c) => c.type === 2) : (channels || [])).map((c) => (
-                    <option key={c.id} value={c.id}>#{c.name}</option>
-                  ))}
-                </SelectField>
-                <p className="text-xs text-[var(--text-muted)]">YES attendees get a Join VC button. Optional.</p>
+                
+                <div className="grid gap-6 sm:grid-cols-2">
+                  {form.mode === 'server' && (
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Mention Role</Label>
+                      <SelectField value={form.mentionRoleId} onChange={(e) => update('mentionRoleId', e.target.value)}>
+                        <option value="">No Mention</option>
+                        {roles.map((r) => <option key={r.id} value={r.id}>@{r.name}</option>)}
+                      </SelectField>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Event Voice Channel</Label>
+                    <SelectField value={form.vcChannelId} onChange={(e) => update('vcChannelId', e.target.value)}>
+                      <option value="">No VC Redirect</option>
+                      {((channels || []).filter((c) => c.type === 2).length ? (channels || []).filter((c) => c.type === 2) : (channels || [])).map((c) => (
+                        <option key={c.id} value={c.id}>#{c.name}</option>
+                      ))}
+                    </SelectField>
+                  </div>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)] leading-relaxed italic">
+                  * Enabling VC Redirect adds a one-click "Join VC" button for attendees.
+                </p>
               </div>
             </div>
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter className="bg-[var(--bg-sidebar)]/30 px-6 py-4">
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={save} loading={saving}>{form.id ? 'Update' : 'Create'}</Button>
+            <Button onClick={save} loading={saving} className="min-w-[120px] shadow-lg shadow-cyan-500/10">
+              {form.id ? 'Save Changes' : 'Create Event'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { ScrollText, Trash2, Search, Filter } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '../components/ui/dialog';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/table';
 
@@ -88,31 +89,46 @@ export default function LogsPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="p-0">
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell>Level</TableHeaderCell>
-                <TableHeaderCell>Source</TableHeaderCell>
-                <TableHeaderCell>Message</TableHeaderCell>
-                <TableHeaderCell>Time</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {pageItems.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell><Badge variant={LEVEL_VARIANT[log.level] || 'neutral'}>{log.level}</Badge></TableCell>
-                  <TableCell className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">{log.source}</TableCell>
-                  <TableCell className="max-w-md truncate text-sm">{log.message}</TableCell>
-                  <TableCell className="text-xs text-[var(--text-muted)] whitespace-nowrap">{formatDate(log.timestamp)}</TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHead>
+                <TableRow className="bg-[var(--bg-sidebar)]/50">
+                  <TableHeaderCell className="w-[100px]">Level</TableHeaderCell>
+                  <TableHeaderCell className="w-[120px]">Source</TableHeaderCell>
+                  <TableHeaderCell>Message</TableHeaderCell>
+                  <TableHeaderCell className="w-[180px] text-right">Time</TableHeaderCell>
                 </TableRow>
-              ))}
-              {pageItems.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="py-12 text-center text-[var(--text-muted)]">No logs found.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {pageItems.map((log) => (
+                  <TableRow key={log.id} className="group hover:bg-white/3 transition-colors">
+                    <TableCell><Badge variant={LEVEL_VARIANT[log.level] || 'neutral'}>{log.level}</Badge></TableCell>
+                    <TableCell>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] bg-white/5 px-2 py-0.5 rounded-full">
+                        {log.source}
+                      </span>
+                    </TableCell>
+                    <TableCell className="max-w-md truncate text-sm font-medium">{log.message}</TableCell>
+                    <TableCell className="text-[11px] font-medium text-[var(--text-muted)] text-right tabular-nums">
+                      {formatDate(log.timestamp)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {pageItems.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-20 text-center">
+                      <div className="flex flex-col items-center gap-2 opacity-50">
+                        <ScrollText className="h-10 w-10" />
+                        <p className="text-sm font-medium">No log entries found.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

@@ -1150,6 +1150,9 @@ app.post('/api/events/create', (req, res) => {
   store[record.id] = record;
   writeStore(store);
   invalidateCatalogCaches();
+
+  enqueueCommand('event_created', { event: normalizeEvent(record.id, record) });
+
   emitSystemUpdate('EVENT_CREATED', { event: normalizeEvent(record.id, record) });
   appendLog(`Created event "${record.desc}".`, 'info', 'events', { id: record.id });
   res.json({ success: true, event: normalizeEvent(record.id, record) });
@@ -1177,6 +1180,9 @@ app.post('/api/events/update', (req, res) => {
   store[id] = result.record;
   writeStore(store);
   invalidateCatalogCaches();
+
+  enqueueCommand('event_updated', { event: normalizeEvent(id, result.record) });
+
   emitSystemUpdate('EVENT_UPDATED', { event: normalizeEvent(id, result.record) });
   appendLog(`Updated event "${result.record.desc}".`, 'info', 'events', { id });
   res.json({ success: true, event: normalizeEvent(id, result.record) });
@@ -1201,6 +1207,9 @@ app.post('/api/events/toggle', (req, res) => {
   writeStore(store);
   invalidateCatalogCaches();
   const toggleType = event.enabled ? 'EVENT_RESUMED' : 'EVENT_PAUSED';
+  
+  enqueueCommand(event.enabled ? 'event_resumed' : 'event_paused', { event });
+
   emitSystemUpdate(toggleType, { event });
   appendLog(`${event.enabled ? 'Enabled' : 'Disabled'} event "${event.desc}".`, 'info', 'events', { id });
   res.json({ success: true, event });
@@ -1223,6 +1232,9 @@ app.post('/api/events/delete', (req, res) => {
   delete store[id];
   writeStore(store);
   invalidateCatalogCaches();
+
+  enqueueCommand('event_deleted', { id, name: event.desc });
+
   emitSystemUpdate('EVENT_DELETED', { id, name: event.desc });
   appendLog(`Deleted event "${event.desc}".`, 'warning', 'events', { id });
   res.json({ success: true });

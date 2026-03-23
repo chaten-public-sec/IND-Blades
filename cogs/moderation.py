@@ -69,42 +69,66 @@ class Moderation(commands.Cog):
             json.dump(commands_list, f, indent=2)
 
     @tasks.loop(seconds=5)
-    async def strike_command_worker(self):
-        """Process strike_added/strike_removed from dashboard API."""
+    async def global_command_worker(self):
+        """Process strike and event commands from dashboard API."""
         guild = self.bot.guilds[0] if self.bot.guilds else None
         if not guild:
             return
         commands_list = self.load_commands()
         updated = False
+        
+        # Mark pending commands as processing
         for cmd in commands_list:
-            if cmd.get("status") != "pending":
-                continue
-            if cmd.get("type") not in ("strike_added", "strike_removed"):
-                continue
-            cmd["status"] = "processing"
-            updated = True
+            if cmd.get("status") == "pending":
+                cmd["status"] = "processing"
+                updated = True
+        
         if updated:
             self.save_commands(commands_list)
+        
+        # Process processing commands
         for cmd in commands_list:
-            if cmd.get("status") != "processing" or cmd.get("type") not in ("strike_added", "strike_removed"):
+            if cmd.get("status") != "processing":
                 continue
+            
+            cmd_type = cmd.get("type")
             payload = cmd.get("payload", {})
-            user_id = payload.get("user_id")
-            strike_count = payload.get("strike_count", 0)
+            
             try:
-                member = guild.get_member(int(user_id))
-                if not member:
-                    member = await guild.fetch_member(int(user_id))
-                if member:
-                    self.bot.dispatch("strike_updated", guild, member, strike_count, "added" if cmd["type"] == "strike_added" else "removed")
-            except Exception:
-                pass
+                if cmd_type in ("strike_added", "strike_removed"):
+                    user_id = payload.get("user_id")
+                    strike_count = payload.get("strike_count", 0)
+                    member = guild.get_member(int(user_id))
+                    if not member:
+                        member = await guild.fetch_member(int(user_id))
+                    if member:
+                        self.bot.dispatch("strike_updated", guild, member, strike_count, "added" if cmd_type == "strike_added" else "removed")
+                
+                elif cmd_type in ("event_created", "event_updated", "event_deleted", "event_paused", "event_resumed"):
+                    event_data = payload.get("event", {})
+                    if cmd_type == "event_deleted":
+                        event_data = {"desc": payload.get("name", "Untitled"), "id": payload.get("id")}
+                    
+                    action_map = {
+                        "event_created": "Event created",
+                        "event_updated": "Event updated",
+                        "event_deleted": "Event deleted",
+                        "event_paused": "Event disabled",
+                        "event_resumed": "Event enabled"
+                    }
+                    
+                    # Notify system
+                    self.bot.dispatch("event_state_change", guild, event_data, action_map.get(cmd_type, "Action performed"), None)
+                    
+            except Exception as e:
+                print(f"[ERROR] Command worker failed for {cmd_type}: {e}")
+            
             cmd["status"] = "done"
             cmd["completed_at"] = discord.utils.utcnow().isoformat()
             self.save_commands(commands_list)
 
-    @strike_command_worker.before_loop
-    async def before_strike_worker(self):
+    @global_command_worker.before_loop
+    async def before_worker(self):
         await self.bot.wait_until_ready()
 
     @tasks.loop(hours=1)
@@ -139,11 +163,11 @@ class Moderation(commands.Cog):
 
     async def cog_load(self):
         self.strike_expiry_check.start()
-        self.strike_command_worker.start()
+        self.global_command_worker.start()
 
     async def cog_unload(self):
         self.strike_expiry_check.cancel()
-        self.strike_command_worker.cancel()
+        self.global_command_worker.cancel()
 
     @app_commands.command(name="strike", description="Manage strikes")
     @app_commands.describe(

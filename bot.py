@@ -35,6 +35,7 @@ class MyBot(commands.Bot):
         await self.load_extension("cogs.moderation")
         await self.load_extension("cogs.activity")
         await self.load_extension("cogs.status")
+        await self.load_extension("cogs.notifications")
 
         guild = discord.Object(id=GUILD_ID)
         

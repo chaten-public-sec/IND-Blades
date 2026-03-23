@@ -4,6 +4,8 @@ import { api } from '../lib/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { SelectField } from '../components/ui/select';
+import { Switch } from '../components/ui/switch';
+import { Label } from '../components/ui/label';
 
 const CATEGORIES = [
   { id: 'moderation', label: 'Moderation Logs', description: 'Kicks, bans, role updates, timeouts' },
@@ -49,16 +51,30 @@ export default function DiscordLogsPage() {
   const updateEnabled = (v) => setConfig((c) => ({ ...c, enabled: v }));
 
   const updateCategory = (catId, field, value) => {
-    setConfig((c) => ({
-      ...c,
-      categories: {
-        ...c.categories,
-        [catId]: { ...(c.categories[catId] || {}), [field]: value },
-      },
-    }));
+    setConfig((c) => {
+      const nextCat = { ...(c.categories[catId] || {}), [field]: value };
+      // Auto-enable if channel is selected, or vice-versa logic if needed
+      return {
+        ...c,
+        categories: { ...c.categories, [catId]: nextCat },
+      };
+    });
+  };
+
+  const validate = () => {
+    if (!config.enabled) return true;
+    for (const catId of CATEGORIES.map(c => c.id)) {
+      const cat = config.categories[catId];
+      if (cat?.enabled && !cat?.channel_id) {
+        showToast(`Please select a channel for ${catId} logs.`, 'error');
+        return false;
+      }
+    }
+    return true;
   };
 
   const save = async () => {
+    if (!validate()) return;
     setSaving(true);
     try {
       const r = await api.post('/api/discord-logs', {
@@ -100,20 +116,19 @@ export default function DiscordLogsPage() {
             Send server events to Discord channels. Enable categories and assign channels.
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-[var(--text-muted)]">Logging</span>
-            <button
-              onClick={() => updateEnabled(!config.enabled)}
-              className={`relative h-7 w-12 rounded-full transition-colors ${config.enabled ? 'bg-cyan-500' : 'bg-black/20 dark:bg-white/15'}`}
-            >
-              <span
-                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${config.enabled ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
-              />
-            </button>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <Label htmlFor="master-toggle" className="text-sm font-medium text-[var(--text-muted)] cursor-pointer">
+              {config.enabled ? 'System Enabled' : 'System Disabled'}
+            </Label>
+            <Switch 
+              id="master-toggle"
+              checked={config.enabled} 
+              onCheckedChange={updateEnabled} 
+            />
           </div>
           <Button onClick={save} loading={saving}>
-            Save Settings
+            Save Configuration
           </Button>
         </div>
       </div>
@@ -129,27 +144,31 @@ export default function DiscordLogsPage() {
       {config.enabled && (
         <div className="space-y-6">
           {CATEGORIES.map((cat) => (
-            <Card key={cat.id}>
+            <Card key={cat.id} className={!config.categories[cat.id]?.enabled ? 'opacity-70' : ''}>
               <CardContent className="pt-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-[var(--text-main)]">{cat.label}</h3>
-                    <p className="mt-1 text-sm text-[var(--text-muted)]">{cat.description}</p>
+                <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex-1 space-y-1">
+                    <h3 className="text-lg font-semibold text-[var(--text-main)]">{cat.label}</h3>
+                    <p className="text-sm text-[var(--text-muted)] leading-relaxed">{cat.description}</p>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => updateCategory(cat.id, 'enabled', !config.categories[cat.id]?.enabled)}
-                      className={`relative h-7 w-12 rounded-full transition-colors ${config.categories[cat.id]?.enabled ? 'bg-emerald-500' : 'bg-black/20 dark:bg-white/15'}`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${config.categories[cat.id]?.enabled ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
+                  <div className="flex flex-col items-end gap-3 sm:w-64">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${config.categories[cat.id]?.enabled ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        {config.categories[cat.id]?.enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                      <Switch 
+                        checked={config.categories[cat.id]?.enabled || false}
+                        onCheckedChange={(v) => updateCategory(cat.id, 'enabled', v)}
                       />
-                    </button>
-                    <div className="w-56">
+                    </div>
+                    
+                    <div className="w-full">
+                      <Label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Target Channel</Label>
                       <SelectField
                         value={config.categories[cat.id]?.channel_id || ''}
                         onChange={(e) => updateCategory(cat.id, 'channel_id', e.target.value)}
                         disabled={!config.categories[cat.id]?.enabled}
+                        className={!config.categories[cat.id]?.channel_id && config.categories[cat.id]?.enabled ? 'border-red-500/50' : ''}
                       >
                         <option value="">Select channel</option>
                         {(channels || []).map((c) => (
@@ -158,6 +177,9 @@ export default function DiscordLogsPage() {
                           </option>
                         ))}
                       </SelectField>
+                      {!config.categories[cat.id]?.channel_id && config.categories[cat.id]?.enabled && (
+                        <p className="mt-1 text-[10px] whitespace-nowrap font-medium text-red-400">Please select a channel</p>
+                      )}
                     </div>
                   </div>
                 </div>

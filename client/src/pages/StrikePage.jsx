@@ -7,6 +7,8 @@ import { SelectField } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '../components/ui/dialog';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/table';
+import { Label } from '../components/ui/label';
+import { Gavel, Shield, AlertTriangle, Users, Search, Trash2, History, Clock, MapPin, Calendar, ExternalLink } from 'lucide-react';
 
 function formatDate(v) {
   if (!v) return 'N/A';
@@ -15,6 +17,7 @@ function formatDate(v) {
 }
 
 function getTimeLeft(expiresAt) {
+  if (!expiresAt) return '—';
   const diff = new Date(expiresAt) - new Date();
   if (diff <= 0) return 'Expired';
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -35,11 +38,12 @@ export default function StrikePage() {
   const [addOpen, setAddOpen] = useState(false);
   const [addUserId, setAddUserId] = useState('');
   const [addReason, setAddReason] = useState('');
+  const [addErrors, setAddErrors] = useState({});
   const [addSaving, setAddSaving] = useState(false);
 
   // Remove Strike Confirmation
   const [removeOpen, setRemoveOpen] = useState(false);
-  const [removeTarget, setRemoveTarget] = useState(null); // { userId, index, reason }
+  const [removeTarget, setRemoveTarget] = useState(null); 
   const [removeSaving, setRemoveSaving] = useState(false);
 
   // User Detail Dialog
@@ -64,15 +68,11 @@ export default function StrikePage() {
         strike_mapping: strikeMapping,
       });
       setStrikeConfig(r.data?.config || strikeConfig);
-      showToast('Strike config saved.');
-    } catch (err) {
-      handleError(err, 'Failed to save config.');
-    } finally {
-      setConfigSaving(false);
-    }
+      showToast('Strike configuration saved.', 'success');
+    } catch (err) { handleError(err, 'Failed to save configuration.'); }
+    finally { setConfigSaving(false); }
   };
 
-  // Filter users that have strikes or match search
   const usersWithStrikes = useMemo(() => {
     return roster
       .filter(u => (u.strike_count || 0) > 0 || (u.strikes && u.strikes.length > 0))
@@ -91,17 +91,24 @@ export default function StrikePage() {
   const currentPage = Math.min(page, totalPages - 1);
   const pageItems = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
 
+  const validateStrike = () => {
+    const e = {};
+    if (!addUserId) e.user = 'Select a recipient';
+    if (!addReason.trim()) e.reason = 'Mention the violation reason';
+    setAddErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
   const addStrike = useCallback(async () => {
-    if (!addUserId) return showToast('Select a user.');
-    if (!addReason.trim()) return showToast('Provide a reason.');
+    if (!validateStrike()) return;
     setAddSaving(true);
     try {
       await api.post('/api/strikes/add', { user_id: addUserId, reason: addReason.trim() });
-      showToast('Strike added.');
+      showToast('Strike issued successfully.', 'success');
       setAddOpen(false);
       setAddUserId('');
       setAddReason('');
-    } catch (err) { handleError(err, 'Failed to add strike.'); }
+    } catch (err) { handleError(err, 'Failed to issue strike.'); }
     finally { setAddSaving(false); }
   }, [addUserId, addReason, showToast, handleError]);
 
@@ -110,10 +117,9 @@ export default function StrikePage() {
     setRemoveSaving(true);
     try {
       await api.post('/api/strikes/remove', { user_id: removeTarget.userId, index: removeTarget.index });
-      showToast('Strike removed.');
+      showToast('Strike removed.', 'info');
       setRemoveOpen(false);
       setRemoveTarget(null);
-      // Refresh detail if open
       if (detailUser && detailUser.id === removeTarget.userId) {
         const updated = roster.find(u => u.id === removeTarget.userId);
         if (updated) setDetailUser(updated);
@@ -132,9 +138,7 @@ export default function StrikePage() {
     return u ? (u.name || u.username || `User ${id.slice(-4)}`) : `User ${id.slice(-4)}`;
   };
 
-  // Update detail user when roster changes
   const currentDetailUser = detailUser ? roster.find(u => u.id === detailUser.id) || detailUser : null;
-
   const userRoleIds = new Set(currentDetailUser?.roles || []);
   const userRoles = roles.filter(r => userRoleIds.has(r.id));
 
@@ -142,49 +146,72 @@ export default function StrikePage() {
     <div className="space-y-6 animate-[fadeIn_0.3s_ease]">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Strike Management</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">Strike Management</h2>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             {usersWithStrikes.length} user{usersWithStrikes.length !== 1 ? 's' : ''} with active strikes
           </p>
         </div>
-        <div className="flex gap-3">
-          <input
-            placeholder="Search users..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-            className="surface-soft h-11 w-full rounded-2xl px-4 text-sm text-[var(--text-main)] transition focus:border-cyan-300/30 sm:w-56"
-          />
-          <Button onClick={() => setAddOpen(true)}>+ Add Strike</Button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+             <input
+               placeholder="Filter by name or ID..."
+               value={search}
+               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+               className="surface-soft h-11 w-full rounded-2xl pl-10 pr-4 text-sm text-[var(--text-main)] transition focus:border-cyan-300/30 sm:w-64"
+             />
+             <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-[var(--text-muted)]" />
+          </div>
+          <Button onClick={() => setAddOpen(true)} className="gap-2 shadow-lg shadow-red-500/10">
+             <Gavel className="h-4 w-4" />
+             Issue Strike
+          </Button>
         </div>
       </div>
 
-      {/* Strike Config: Expiry + Role Mapping */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h3 className="font-semibold text-[var(--text-main)]">Strike Expiry</h3>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">Days until a strike expires.</p>
-              <div className="mt-3 flex items-center gap-3">
+          <div className="flex flex-col gap-8 lg:flex-row">
+            <div className="space-y-4 lg:w-1/3">
+              <div className="flex items-center gap-2">
+                 <Clock className="h-4 w-4 text-cyan-400" />
+                 <h3 className="font-semibold text-[var(--text-main)]">Strike Expiry</h3>
+              </div>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+                Configure how long a strike remains active before it is automatically forgiven.
+              </p>
+              <div className="flex items-center gap-3">
                 <input
                   type="number"
                   min="1"
                   value={expiryDays}
                   onChange={(e) => setExpiryDays(Number(e.target.value))}
-                  className="surface-soft h-11 w-24 rounded-2xl px-4 text-sm text-[var(--text-main)]"
+                  className="surface-soft h-11 w-24 rounded-2xl px-4 text-sm text-[var(--text-main)] focus:border-cyan-300/30 transition-all font-mono"
                 />
-                <span className="text-sm text-[var(--text-muted)]">Days</span>
+                <span className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-widest">Days</span>
               </div>
             </div>
-            <div className="flex-1 lg:max-w-md">
-              <h3 className="font-semibold text-[var(--text-main)]">Strike Role Mapping</h3>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">Roles assigned by strike count. Roles stack; removed on strike removal.</p>
-              <div className="mt-3 space-y-3">
+
+            <div className="hidden lg:block w-px bg-white/5 self-stretch" />
+
+            <div className="flex-1 space-y-4">
+              <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-rose-400" />
+                    <h3 className="font-semibold text-[var(--text-main)]">Role Mapping Escalation</h3>
+                 </div>
+                 <Button onClick={saveConfig} loading={configSaving} size="sm" className="h-8">Save Changes</Button>
+              </div>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+                Automatically assign restrictive roles based on strike counts. Roles stack as strikes increase.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-3">
                 {[1, 2, 3].map((count) => (
-                  <div key={count} className="flex items-center gap-4">
-                    <span className="w-20 text-sm font-bold text-rose-600 dark:text-red-400">{count} Strike{count > 1 ? 's' : ''}</span>
+                  <div key={count} className="space-y-2 rounded-2xl bg-white/3 border border-white/5 p-3">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
+                       {count} Strike{count > 1 ? 's' : ''} Target
+                    </Label>
                     <SelectField value={strikeMapping[count] || ''} onChange={(e) => updateStrikeMapping(count, e.target.value)}>
-                      <option value="">No role</option>
+                      <option value="">No Role</option>
                       {roles.map((r) => (
                         <option key={r.id} value={r.id}>@{r.name}</option>
                       ))}
@@ -193,36 +220,36 @@ export default function StrikePage() {
                 ))}
               </div>
             </div>
-            <Button onClick={saveConfig} loading={configSaving}>Save Config</Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Stats row */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
+        <Card className="overflow-hidden border-rose-500/20 shadow-lg shadow-red-500/5">
           <CardContent className="pt-6 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Users Struck</p>
-            <p className="mt-2 text-3xl font-bold text-red-400">{usersWithStrikes.length}</p>
+            <div className="flex justify-center mb-2"><Users className="h-5 w-5 text-rose-400 opacity-50" /></div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Flagged Users</p>
+            <p className="mt-1 text-4xl font-black text-rose-500">{usersWithStrikes.length}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden border-amber-500/20 shadow-lg shadow-amber-500/5">
           <CardContent className="pt-6 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Total Strikes</p>
-            <p className="mt-2 text-3xl font-bold text-amber-400">
-              {usersWithStrikes.reduce((sum, u) => sum + (u.strike_count || 0), 0)}
+            <div className="flex justify-center mb-2"><Gavel className="h-5 w-5 text-amber-400 opacity-50" /></div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Active Strikes</p>
+            <p className="mt-1 text-4xl font-black text-amber-500">
+               {usersWithStrikes.reduce((sum, u) => sum + (u.strike_count || 0), 0)}
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden border-cyan-500/20 shadow-lg shadow-cyan-500/5">
           <CardContent className="pt-6 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">All Members</p>
-            <p className="mt-2 text-3xl font-bold">{roster.length}</p>
+            <div className="flex justify-center mb-2"><MapPin className="h-5 w-5 text-cyan-400 opacity-50" /></div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Total Reach</p>
+            <p className="mt-1 text-4xl font-black text-cyan-100">{roster.length}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Strikes Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -231,7 +258,7 @@ export default function StrikePage() {
                 <TableHeaderCell>Member</TableHeaderCell>
                 <TableHeaderCell>Strikes</TableHeaderCell>
                 <TableHeaderCell>Last Reason</TableHeaderCell>
-                <TableHeaderCell>Latest Expiry</TableHeaderCell>
+                <TableHeaderCell>Status</TableHeaderCell>
                 <TableHeaderCell className="text-right">Actions</TableHeaderCell>
               </TableRow>
             </TableHead>
@@ -239,42 +266,53 @@ export default function StrikePage() {
               {pageItems.map(user => {
                 const lastStrike = user.strikes && user.strikes.length > 0 ? user.strikes[user.strikes.length - 1] : null;
                 return (
-                  <TableRow key={user.id} className="cursor-pointer" onClick={() => setDetailUser(user)}>
+                  <TableRow key={user.id} className="cursor-pointer group" onClick={() => setDetailUser(user)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-red-400/20 to-amber-300/20 text-sm font-bold">
-                          {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-sm font-bold border border-white/5 overflow-hidden">
+                           {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                           <div className="absolute inset-0 bg-gradient-to-br from-red-500/20 to-transparent" />
                         </div>
                         <div>
-                          <p className="font-semibold">{user.name || user.username}</p>
-                          {user.username && <p className="text-xs text-[var(--text-muted)]">@{user.username}</p>}
+                          <p className="font-bold text-[var(--text-main)] group-hover:text-cyan-400 transition-colors">{user.name || user.username}</p>
+                          <p className="text-[10px] font-mono text-[var(--text-muted)]">{user.id}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={user.strike_count >= 3 ? 'danger' : user.strike_count >= 2 ? 'warning' : 'default'}>
-                        {user.strike_count || 0} Strike{(user.strike_count || 0) !== 1 ? 's' : ''}
+                      <Badge variant={user.strike_count >= 3 ? 'danger' : user.strike_count >= 2 ? 'warning' : 'default'} className="px-3 shrink-0">
+                        {user.strike_count || 0}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm max-w-[200px] truncate">{lastStrike?.reason || '—'}</TableCell>
-                    <TableCell className="text-sm text-[var(--text-muted)]">
-                      {lastStrike ? getTimeLeft(lastStrike.expires_at) : '—'}
+                    <TableCell className="text-sm max-w-[200px] truncate font-medium text-[var(--text-muted)]">
+                       {lastStrike?.reason || '—'}
+                    </TableCell>
+                    <TableCell>
+                       <div className="flex flex-col gap-0.5">
+                          <span className={`text-[11px] font-bold ${getTimeLeft(lastStrike?.expires_at) === 'Expired' ? 'text-red-400' : 'text-emerald-400'}`}>
+                             {lastStrike ? getTimeLeft(lastStrike.expires_at) : '—'}
+                          </span>
+                          <span className="text-[10px] text-[var(--text-muted)]">Until Forgiveness</span>
+                       </div>
                     </TableCell>
                     <TableCell className="text-right" onClick={e => e.stopPropagation()}>
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => setDetailUser(user)}>View</Button>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => {
-                            if (user.strikes?.length > 0) {
-                              openRemoveDialog(user.id, user.strikes.length - 1, user.strikes[user.strikes.length - 1].reason);
-                            }
-                          }}
-                          disabled={!user.strikes || user.strikes.length === 0}
-                        >
-                          Remove
-                        </Button>
+                      <div className="flex justify-end gap-2 text-[var(--text-main)]">
+                         <Button size="sm" variant="ghost" onClick={() => setDetailUser(user)} className="h-8 w-8 p-0">
+                           <ExternalLink className="h-4 w-4" />
+                         </Button>
+                         <Button
+                           size="sm"
+                           variant="ghost"
+                           className="h-8 w-8 p-0 text-red-500/70 hover:text-red-500 hover:bg-red-500/10"
+                           onClick={() => {
+                             if (user.strikes?.length > 0) {
+                               openRemoveDialog(user.id, user.strikes.length - 1, user.strikes[user.strikes.length - 1].reason);
+                             }
+                           }}
+                           disabled={!user.strikes || user.strikes.length === 0}
+                         >
+                           <Trash2 className="h-4 w-4" />
+                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -292,142 +330,159 @@ export default function StrikePage() {
         </CardContent>
       </Card>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4">
           <Button size="sm" variant="ghost" disabled={currentPage === 0} onClick={() => setPage(p => p - 1)}>← Prev</Button>
-          <span className="text-sm text-[var(--text-muted)]">Page {currentPage + 1} of {totalPages}</span>
+          <span className="text-sm text-[var(--text-muted)] font-medium">Page {currentPage + 1} of {totalPages}</span>
           <Button size="sm" variant="ghost" disabled={currentPage >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next →</Button>
         </div>
       )}
 
-      {/* Add Strike Dialog */}
+      {/* Issuance Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Strike</DialogTitle>
-            <DialogDescription>Issue a strike to a server member.</DialogDescription>
+            <DialogTitle>Issue Strike</DialogTitle>
+            <DialogDescription>Apply a strike record to a server member.</DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-[var(--text-muted)]">User</label>
-                <select
-                  value={addUserId}
-                  onChange={(e) => setAddUserId(e.target.value)}
-                  className="surface-soft h-11 w-full rounded-2xl px-4 text-sm text-[var(--text-main)] appearance-none"
-                >
-                  <option value="" disabled>Select a member</option>
-                  {roster.map(u => (
-                    <option key={u.id} value={u.id}>{u.name || u.username} {u.strike_count ? `(${u.strike_count} strikes)` : ''}</option>
-                  ))}
-                </select>
+                <Label className={`text-[10px] font-bold uppercase tracking-widest ${addErrors.user ? 'text-red-400' : 'text-[var(--text-muted)]'}`}>Target Member</Label>
+                <div className="relative">
+                   <select
+                     value={addUserId}
+                     onChange={(e) => { setAddUserId(e.target.value); setAddErrors(p => ({ ...p, user: '' })); }}
+                     className={`surface-soft h-12 w-full rounded-2xl pl-11 pr-4 text-sm text-[var(--text-main)] appearance-none outline-none transition-all ${addErrors.user ? 'border-red-500/50 bg-red-500/5' : 'focus:border-cyan-500/30'}`}
+                   >
+                     <option value="" disabled>Search or select member...</option>
+                     {roster.map(u => (
+                       <option key={u.id} value={u.id}>
+                         {u.name || u.username} {u.strike_count ? `(${u.strike_count} active)` : ''}
+                       </option>
+                     ))}
+                   </select>
+                   <Users className={`absolute left-4 top-3.5 h-5 w-5 ${addErrors.user ? 'text-red-400' : 'text-[var(--text-muted)]'}`} />
+                </div>
+                {addErrors.user && <p className="text-[10px] font-medium text-red-400">{addErrors.user}</p>}
               </div>
+              
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-[var(--text-muted)]">Reason</label>
-                <input
-                  value={addReason}
-                  onChange={(e) => setAddReason(e.target.value)}
-                  placeholder="e.g. Missed Event, Rule Violation"
-                  className="surface-soft h-11 w-full rounded-2xl px-4 text-sm text-[var(--text-main)] transition focus:border-cyan-300/30"
-                />
+                <Label className={`text-[10px] font-bold uppercase tracking-widest ${addErrors.reason ? 'text-red-400' : 'text-[var(--text-muted)]'}`}>Violation Reason</Label>
+                <div className="relative">
+                  <input
+                    value={addReason}
+                    onChange={(e) => { setAddReason(e.target.value); setAddErrors(p => ({ ...p, reason: '' })); }}
+                    placeholder="Describe the incident (e.g. Missed Event)"
+                    className={`surface-soft h-12 w-full rounded-2xl pl-11 pr-4 text-sm text-[var(--text-main)] transition-all outline-none ${addErrors.reason ? 'border-red-500/50 bg-red-500/5' : 'focus:border-cyan-500/30'}`}
+                  />
+                  <AlertTriangle className={`absolute left-4 top-3.5 h-5 w-5 ${addErrors.reason ? 'text-red-400' : 'text-[var(--text-muted)]'}`} />
+                </div>
+                {addErrors.reason && <p className="text-[10px] font-medium text-red-400">{addErrors.reason}</p>}
               </div>
             </div>
           </DialogBody>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button onClick={addStrike} loading={addSaving}>Add Strike</Button>
+            <Button onClick={addStrike} loading={addSaving}>Confirm Issue</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Remove Strike Confirmation Dialog */}
+      {/* Remove Confirmation */}
       <Dialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove Strike</DialogTitle>
-            <DialogDescription>Are you sure you want to remove this strike?</DialogDescription>
+            <DialogTitle>Revoke Strike</DialogTitle>
+            <DialogDescription>This will remove the strike record from the member.</DialogDescription>
           </DialogHeader>
           <DialogBody>
             {removeTarget && (
-              <div className="surface-soft rounded-xl p-4">
-                <p className="text-sm"><strong>User:</strong> {getUserName(removeTarget.userId)}</p>
-                <p className="text-sm mt-1"><strong>Reason:</strong> {removeTarget.reason}</p>
+              <div className="surface-soft rounded-xl p-4 border border-dashed border-red-500/20 bg-red-500/5">
+                <p className="text-sm font-semibold text-red-200">User: {getUserName(removeTarget.userId)}</p>
+                <p className="text-sm mt-1 text-[var(--text-muted)] italic">Reason: {removeTarget.reason}</p>
               </div>
             )}
           </DialogBody>
           <DialogFooter>
             <Button variant="ghost" onClick={() => { setRemoveOpen(false); setRemoveTarget(null); }}>Cancel</Button>
-            <Button variant="danger" onClick={confirmRemove} loading={removeSaving}>Remove Strike</Button>
+            <Button variant="danger" onClick={confirmRemove} loading={removeSaving}>Revoke Strike</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* User Detail Dialog */}
+      {/* Detail Dialog */}
       <Dialog open={Boolean(currentDetailUser)} onOpenChange={(open) => { if (!open) setDetailUser(null); }}>
-        <DialogContent className="w-[min(96vw,560px)] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
           <DialogHeader>
-            <DialogTitle>Strike History</DialogTitle>
+            <DialogTitle>Member Strike History</DialogTitle>
           </DialogHeader>
           <DialogBody>
             {currentDetailUser && (
-              <div className="space-y-6">
-                {/* User Info */}
-                <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-red-400/30 to-amber-300/30 text-2xl font-bold shadow-lg">
+              <div className="space-y-8">
+                <div className="flex items-center gap-5">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-500/20 to-amber-500/20 text-3xl font-bold border border-white/10 shadow-xl">
                     {(currentDetailUser.name || currentDetailUser.username || 'U').charAt(0).toUpperCase()}
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold">{currentDetailUser.name || currentDetailUser.username}</h3>
-                    {currentDetailUser.username && <p className="text-sm text-[var(--text-muted)]">@{currentDetailUser.username}</p>}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-xl font-black text-[var(--text-main)] truncate">{currentDetailUser.name || currentDetailUser.username}</h3>
+                    <p className="text-xs font-mono text-[var(--text-muted)] truncate">{currentDetailUser.id}</p>
+                    <div className="mt-2 flex gap-2">
+                       {userRoles.slice(0, 3).map(r => <Badge key={r.id} variant="default" className="text-[10px]">{r.name}</Badge>)}
+                       {userRoles.length > 3 && <Badge variant="secondary" className="text-[10px]">+{userRoles.length - 3}</Badge>}
+                    </div>
                   </div>
-                  <div className="ml-auto">
-                    <Badge variant={currentDetailUser.strike_count >= 3 ? 'danger' : currentDetailUser.strike_count >= 2 ? 'warning' : 'default'} className="text-lg px-3 py-1">
-                      {currentDetailUser.strike_count || 0}
-                    </Badge>
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-red-400">Total</p>
+                    <p className="text-4xl font-black text-red-500">{currentDetailUser.strike_count || 0}</p>
                   </div>
                 </div>
 
-                {/* Roles */}
-                {userRoles.length > 0 && (
-                  <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Roles</p>
-                    <div className="flex flex-wrap gap-2">
-                      {userRoles.map(r => <Badge key={r.id} variant="default">{r.name}</Badge>)}
-                    </div>
-                  </div>
-                )}
-
-                {/* Strike History */}
                 <div>
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Strike History</p>
-                  <div className="space-y-3">
+                  <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-2">
+                     <History className="h-4 w-4 text-cyan-400" />
+                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Historical Incidents</h4>
+                  </div>
+                  <div className="space-y-4">
                     {(currentDetailUser.strikes || []).map((strike, i) => (
-                      <div key={i} className="surface-soft rounded-xl p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <p className="font-bold text-red-400">{strike.reason}</p>
-                            <p className="mt-1 text-xs text-[var(--text-muted)]">Given: {formatDate(strike.timestamp)}</p>
-                            <p className="text-xs text-[var(--text-muted)]">Expires: {formatDate(strike.expires_at)}</p>
+                      <div key={i} className="group relative overflow-hidden rounded-2xl border border-white/5 bg-white/3 p-5 transition-all hover:bg-white/5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-4 flex-1">
+                            <div>
+                               <p className="font-bold text-rose-500 text-lg leading-tight">{strike.reason}</p>
+                               <div className="mt-2 flex items-center gap-3 text-[10px] font-medium text-[var(--text-muted)] bg-white/5 w-fit px-2 py-1 rounded-md">
+                                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3 " /> {formatDate(strike.timestamp).split(',')[0]}</span>
+                                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatDate(strike.timestamp).split(',')[1]}</span>
+                               </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                               <div className="flex items-center justify-between">
+                                  <Label className="text-[9px] font-bold uppercase tracking-widest opacity-50">Forgiveness Timeline</Label>
+                                  <span className={`text-[10px] font-bold ${getTimeLeft(strike.expires_at) === 'Expired' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                     {getTimeLeft(strike.expires_at)}
+                                  </span>
+                               </div>
+                               <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                                  <div className={`h-full rounded-full transition-all duration-1000 ${getTimeLeft(strike.expires_at) === 'Expired' ? 'bg-red-500 w-full' : 'bg-emerald-500 w-2/3 animate-pulse'}`} />
+                               </div>
+                            </div>
                           </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <Badge variant={getTimeLeft(strike.expires_at) === 'Expired' ? 'danger' : 'warning'}>
-                              {getTimeLeft(strike.expires_at)}
-                            </Badge>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() => openRemoveDialog(currentDetailUser.id, i, strike.reason)}
-                            >
-                              Remove
-                            </Button>
-                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-9 w-9 p-0 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/5 hover:bg-red-500/20"
+                            onClick={() => openRemoveDialog(currentDetailUser.id, i, strike.reason)}
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </Button>
                         </div>
                       </div>
                     ))}
                     {(!currentDetailUser.strikes || currentDetailUser.strikes.length === 0) && (
-                      <div className="surface-soft rounded-xl p-4 text-center text-sm text-[var(--text-muted)]">
-                        No active strikes. This user is in good standing!
+                      <div className="flex flex-col items-center justify-center py-12 opacity-50 bg-white/[0.02] rounded-3xl border-2 border-dashed border-white/10 mt-4">
+                        <Shield className="h-12 w-12 mb-3 text-emerald-500" />
+                        <p className="text-sm font-semibold tracking-wide">Excellent standing. No violations recorded.</p>
                       </div>
                     )}
                   </div>

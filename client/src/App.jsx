@@ -12,10 +12,12 @@ import DiscordLogsPage from './pages/DiscordLogsPage';
 import AutoRolePage from './pages/AutoRolePage';
 import NotificationsPage from './pages/NotificationsPage';
 import StrikePage from './pages/StrikePage';
+import { Toaster } from 'sonner';
 
 function App() {
   return (
     <ThemeProvider>
+      <Toaster position="top-right" richColors closeButton />
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />

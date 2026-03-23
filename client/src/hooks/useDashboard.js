@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, createRealtimeClient } from '../lib/api';
+import { toast as sonnerToast } from 'sonner';
 
 export function useDashboard() {
   const [events, setEvents] = useState([]);
@@ -18,15 +19,15 @@ export function useDashboard() {
   const [ping, setPing] = useState(-1);
   const [botStatus, setBotStatus] = useState('disconnected');
   const [liveSync, setLiveSync] = useState(false);
-  const [toast, setToast] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const socketRef = useRef(null);
 
-  const showToast = useCallback((message) => {
-    setToast(message);
-    setTimeout(() => setToast((c) => (c === message ? '' : c)), 3000);
+  const showToast = useCallback((message, type = 'success') => {
+    if (type === 'error') sonnerToast.error(message);
+    else if (type === 'info') sonnerToast.info(message);
+    else sonnerToast.success(message);
   }, []);
 
   const handleError = useCallback((error, fallback) => {
@@ -223,8 +224,10 @@ export function useDashboard() {
               showToast('Activity config updated.');
               break;
             case 'BOT_STATUS_UPDATED':
-              setBotStatus(data.payload?.connected ? 'connected' : 'disconnected');
-              if (data.payload?.connected) showToast('Discord bot is back online.');
+              const isConnected = data.payload?.connected;
+              setBotStatus(isConnected ? 'connected' : 'disconnected');
+              if (isConnected) showToast('Discord bot is back online.', 'info');
+              else showToast('Discord bot went offline.', 'error');
               break;
             case 'SYSTEM_REFRESH':
               refreshEvents();
@@ -278,7 +281,7 @@ export function useDashboard() {
 
   return {
     events, config, activity, logs, users, channels, roles, health, autorole, notifications, strikeConfig, activityConfig,
-    ping, botStatus, liveSync, toast, errorMessage, loading, roster,
+    ping, botStatus, liveSync, errorMessage, loading, roster,
     setConfig, setEvents, setAutorole, setNotifications, setStrikeConfig, setActivityConfig,
     showToast, handleError, logout, refreshEvents, refreshWelcome, refreshActivity, refreshLogs, refreshUsers, refreshStrikeConfig,
   };
