@@ -84,11 +84,12 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
     guild = bot.get_guild(GUILD_ID)
     if guild:
-        print(f"-> Prefetching ALL members for guild: {guild.name} ({GUILD_ID})")
+        print(f"-> Prefetching ALL members for guild: {guild.name}")
         try:
-            # Replaced cache reliance with full member fetch as per production spec
-            members = await guild.fetch_members().flatten()
-            print(f"-> Fetched {len(members)} members into cache")
+            # Replaced deprecated .flatten() with async iteration for v2+ compatibility
+            async for _ in guild.fetch_members(limit=None):
+                pass
+            print(f"-> Members loaded: {len(guild.members)}")
             # Notify backend
             send_heartbeat(True)
         except Exception as e:
