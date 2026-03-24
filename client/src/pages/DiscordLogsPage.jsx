@@ -19,6 +19,29 @@ function emptyCategory() {
   };
 }
 
+function validateCategoryDraft(draft) {
+  const errors = {};
+
+  if (!String(draft.name || '').trim()) {
+    errors.name = 'Category name is required.';
+  }
+
+  if (!String(draft.channel_id || '').trim()) {
+    errors.channel_id = 'Choose a channel.';
+  }
+
+  if (!Array.isArray(draft.logs) || draft.logs.length === 0) {
+    errors.logs = 'Add at least one log key.';
+  }
+
+  return errors;
+}
+
+function FieldError({ message }) {
+  if (!message) return null;
+  return <p className="text-sm font-medium text-rose-300">{message}</p>;
+}
+
 export default function DiscordLogsPage() {
   const dashboard = useDashboardContext();
   const [categories, setCategories] = useState([]);
@@ -26,6 +49,7 @@ export default function DiscordLogsPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
   const [draft, setDraft] = useState(emptyCategory());
+  const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const canManageDiscordLogs = hasPermission(dashboard.viewer, 'manage_discord_logs');
 
@@ -56,6 +80,7 @@ export default function DiscordLogsPage() {
   const openCreate = () => {
     setEditingIndex(-1);
     setDraft(emptyCategory());
+    setErrors({});
     setDialogOpen(true);
   };
 
@@ -67,10 +92,17 @@ export default function DiscordLogsPage() {
       logs: Array.isArray(category.logs) ? category.logs : [],
       channel_id: category.channel_id || null,
     });
+    setErrors({});
     setDialogOpen(true);
   };
 
   const saveDraft = async () => {
+    const nextErrors = validateCategoryDraft(draft);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      return;
+    }
+
     const nextCategories = editingIndex >= 0
       ? categories.map((item, index) => index === editingIndex ? draft : item)
       : [...categories, draft];
@@ -190,29 +222,47 @@ export default function DiscordLogsPage() {
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Category Name</label>
                 <input
                   value={draft.name}
-                  onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-                  className="surface-soft h-12 w-full rounded-[22px] px-4 text-sm"
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setDraft((current) => ({ ...current, name: value }));
+                    setErrors((current) => ({ ...current, name: value.trim() ? '' : current.name }));
+                  }}
+                  className={`surface-soft h-12 w-full rounded-[22px] px-4 text-sm ${errors.name ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
                   placeholder="Moderation Actions"
                 />
+                <FieldError message={errors.name} />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Selected Channel</label>
-                <Button variant="secondary" className="w-full justify-between" onClick={() => setPickerOpen(true)}>
+                <Button
+                  variant="secondary"
+                  className={`w-full justify-between ${errors.channel_id ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
+                  onClick={() => setPickerOpen(true)}
+                >
                   {channelName(draft.channel_id)}
                   <span className="text-xs text-[var(--text-muted)]">Choose channel</span>
                 </Button>
+                <FieldError message={errors.channel_id} />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Log Keys</label>
                 <textarea
                   value={(draft.logs || []).join('\n')}
-                  onChange={(event) => setDraft((current) => ({
-                    ...current,
-                    logs: event.target.value.split(/\r?\n|,/).map((value) => value.trim()).filter(Boolean),
-                  }))}
-                  className="surface-soft min-h-32 rounded-[22px] px-4 py-3 text-sm"
+                  onChange={(event) => {
+                    const nextLogs = event.target.value.split(/\r?\n|,/).map((value) => value.trim()).filter(Boolean);
+                    setDraft((current) => ({
+                      ...current,
+                      logs: nextLogs,
+                    }));
+                    setErrors((current) => ({
+                      ...current,
+                      logs: nextLogs.length > 0 ? '' : current.logs,
+                    }));
+                  }}
+                  className={`surface-soft min-h-32 rounded-[22px] px-4 py-3 text-sm ${errors.logs ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
                   placeholder="One log key per line, for example message_delete"
                 />
+                <FieldError message={errors.logs} />
               </div>
               <div className="flex items-center gap-3">
                 <Button
@@ -245,7 +295,10 @@ export default function DiscordLogsPage() {
         description="Search the Discord channels available for this log category."
         items={dashboard.channels.map((item) => ({ id: item.id, label: item.name, description: `Channel ID ${item.id}` }))}
         selectedIds={draft.channel_id ? [String(draft.channel_id)] : []}
-        onConfirm={(ids) => setDraft((current) => ({ ...current, channel_id: ids[0] || null }))}
+        onConfirm={(ids) => {
+          setDraft((current) => ({ ...current, channel_id: ids[0] || null }));
+          setErrors((current) => ({ ...current, channel_id: ids[0] ? '' : current.channel_id }));
+        }}
         placeholder="Search channels"
       />
     </div>

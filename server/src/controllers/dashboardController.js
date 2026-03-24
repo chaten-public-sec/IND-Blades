@@ -6,15 +6,17 @@ function enrichUsersWithWebsiteRoles(users, settings, managedUsers, superAdminId
   const famRoleId = settings.fam_discord_role_id ? String(settings.fam_discord_role_id) : null;
 
   return users.map((user) => {
-    const manualRole = superAdminSet.has(String(user.id))
-      ? WEBSITE_ROLES.SUPER_ADMIN
-      : (managedMap.get(String(user.id)) || null);
+    const storedManagedRole = managedMap.get(String(user.id)) || null;
+    const isSuperAdmin = superAdminSet.has(String(user.id));
+    const manualRole = isSuperAdmin ? WEBSITE_ROLES.SUPER_ADMIN : storedManagedRole;
     const famMember = Boolean(famRoleId && Array.isArray(user.roles) && user.roles.map(String).includes(famRoleId));
     const websiteRoles = roleService.buildRoleList({ famMember, managementRole: manualRole });
     const primaryRole = roleService.resolvePrimaryRole(websiteRoles);
 
     return {
       ...user,
+      managed_role: storedManagedRole,
+      is_super_admin: isSuperAdmin,
       website_roles: websiteRoles,
       primary_role: primaryRole,
       primary_role_label: primaryRole ? ROLE_LABELS[primaryRole] : null,

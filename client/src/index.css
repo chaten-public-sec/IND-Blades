@@ -113,9 +113,40 @@
     color: var(--text-main);
   }
 
+  select,
+  textarea,
+  input {
+    background-color: transparent;
+  }
+
+  select option,
+  select optgroup {
+    background: var(--bg-main);
+    color: var(--text-main);
+  }
+
   input::placeholder,
   textarea::placeholder {
     color: var(--text-muted);
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: rgba(49, 94, 251, 0.3);
+    box-shadow: 0 0 0 4px rgba(49, 94, 251, 0.12);
+  }
+
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    color-scheme: dark;
+  }
+
+  .light input[type="date"],
+  .light input[type="time"],
+  .light input[type="datetime-local"] {
+    color-scheme: light;
   }
 
   ::selection {

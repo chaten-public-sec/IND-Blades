@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, ShieldPlus, UserCog } from 'lucide-react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
@@ -43,6 +43,17 @@ export default function UsersPage() {
     return map;
   }, [dashboard.roles]);
 
+  useEffect(() => {
+    if (!selectedUser) {
+      return;
+    }
+
+    const nextUser = dashboard.users.find((user) => String(user.id) === String(selectedUser.id));
+    if (nextUser) {
+      setSelectedUser(nextUser);
+    }
+  }, [dashboard.users, selectedUser?.id]);
+
   const users = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) return dashboard.users;
@@ -51,7 +62,7 @@ export default function UsersPage() {
     );
   }, [dashboard.users, query]);
 
-  const managedRoleCount = dashboard.users.filter((user) => user.primary_role && user.primary_role !== 'fam_member').length;
+  const managedRoleCount = dashboard.users.filter((user) => user.is_super_admin || user.managed_role).length;
   const activeStrikeCount = dashboard.users.reduce(
     (total, user) => total + (user.strikes || []).filter((item) => item.status === 'active').length,
     0
@@ -182,7 +193,7 @@ export default function UsersPage() {
                     {canManageRoles ? (
                       <TableCell>
                         <div className="flex justify-end gap-2">
-                          {roleOptions.length ? (
+                          {roleOptions.length && !user.is_super_admin ? (
                             <Button
                               size="sm"
                               variant="secondary"
@@ -195,7 +206,7 @@ export default function UsersPage() {
                               Assign
                             </Button>
                           ) : null}
-                          {user.primary_role && user.primary_role !== 'fam_member' ? (
+                          {user.managed_role ? (
                             <Button size="sm" variant="ghost" onClick={() => clearRole(user.id)}>
                               <UserCog className="h-4 w-4" />
                               Clear
@@ -222,7 +233,7 @@ export default function UsersPage() {
         title={selectedUser ? `Assign role to ${selectedUser.name}` : 'Assign Role'}
         description="Choose the managed website role you want to assign."
         items={roleOptions}
-        selectedIds={selectedUser?.primary_role ? [selectedUser.primary_role] : []}
+        selectedIds={selectedUser?.managed_role ? [selectedUser.managed_role] : []}
         onConfirm={(ids) => {
           if (ids[0]) assignRole(ids[0]);
         }}

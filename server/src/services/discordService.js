@@ -247,7 +247,7 @@ class DiscordService {
       const user = member.user || {};
       const stats = activityUsers[user.id] || {};
       const strikeData = legacyStoreService.getUserStrikes(user.id, store);
-      const avatarUrl = this.resolveAvatarUrl(user);
+      const avatarUrl = this.resolveMemberAvatarUrl(member, user);
 
       roleMap.set(String(user.id), Array.isArray(member.roles) ? member.roles.map(String) : []);
 
@@ -332,12 +332,37 @@ class DiscordService {
   }
 
   resolveAvatarUrl(user) {
-    if (!user?.id || !user?.avatar) {
+    if (!user?.id) {
       return null;
+    }
+
+    if (!user.avatar) {
+      return this.resolveDefaultAvatarUrl(user);
     }
 
     const extension = String(user.avatar).startsWith('a_') ? 'gif' : 'png';
     return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${extension}?size=256`;
+  }
+
+  resolveMemberAvatarUrl(member, user) {
+    if (member?.avatar && user?.id && this.guildId) {
+      const extension = String(member.avatar).startsWith('a_') ? 'gif' : 'png';
+      return `https://cdn.discordapp.com/guilds/${this.guildId}/users/${user.id}/avatars/${member.avatar}.${extension}?size=256`;
+    }
+
+    return this.resolveAvatarUrl(user);
+  }
+
+  resolveDefaultAvatarUrl(user) {
+    try {
+      const discriminator = String(user?.discriminator || '').trim();
+      const index = discriminator && discriminator !== '0'
+        ? Number(discriminator) % 5
+        : Number((BigInt(String(user.id)) >> 22n) % 6n);
+      return `https://cdn.discordapp.com/embed/avatars/${index}.png`;
+    } catch {
+      return 'https://cdn.discordapp.com/embed/avatars/0.png';
+    }
   }
 }
 

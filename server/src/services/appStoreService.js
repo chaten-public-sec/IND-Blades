@@ -117,9 +117,14 @@ class AppStoreService {
 
   normalizeSettings(value) {
     const input = value && typeof value === 'object' ? value : {};
+    const configuredFamRoleId = parseSnowflake(
+      getEnv('FAM_DISCORD_ROLE_ID', getEnv('FAMILY_ROLE_ID', getEnv('MEMBER_ROLE_ID', '')))
+    );
+    const storedFamRoleId = parseSnowflake(input.fam_discord_role_id);
+
     return {
       super_admin_ids: Array.isArray(input.super_admin_ids) ? input.super_admin_ids.map(String) : [],
-      fam_discord_role_id: parseSnowflake(input.fam_discord_role_id),
+      fam_discord_role_id: storedFamRoleId || configuredFamRoleId,
       created_at: input.created_at || new Date().toISOString(),
       updated_at: input.updated_at || new Date().toISOString()
     };

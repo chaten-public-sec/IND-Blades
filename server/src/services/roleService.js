@@ -13,17 +13,18 @@ class RoleService {
   }
 
   async getSuperAdminIds() {
+    const envAdmins = this.getConfiguredSuperAdminIds();
+    if (envAdmins.length > 0) {
+      return Array.from(new Set(envAdmins));
+    }
+
     const settings = await this.appStoreService.getSettings();
-    return Array.from(new Set([
-      ...this.getConfiguredSuperAdminIds(),
-      ...(settings.super_admin_ids || []).map(String)
-    ]));
+    return Array.from(new Set((settings.super_admin_ids || []).map(String)));
   }
 
   async ensureBootstrappedSuperAdmin(discordId) {
-    const targetId = String(discordId);
     const envAdmins = this.getConfiguredSuperAdminIds();
-    if (envAdmins.includes(targetId)) {
+    if (envAdmins.length > 0) {
       return;
     }
 
@@ -89,7 +90,7 @@ class RoleService {
       username: discordUser.username || null,
       global_name: discordUser.global_name || null,
       display_name: guildMember?.nick || discordUser.global_name || discordUser.username || 'IND Member',
-      avatar_url: this.discordService.resolveAvatarUrl(discordUser),
+      avatar_url: this.discordService.resolveMemberAvatarUrl(guildMember, discordUser),
       guild_member: Boolean(guildMember),
       guild_nick: guildMember?.nick || null,
       guild_joined_at: guildMember?.joined_at || null,
@@ -126,7 +127,12 @@ class RoleService {
     ]);
 
     const rows = managedUsers.filter((item) => item.assigned_role);
+    const knownIds = new Set(rows.map((item) => String(item.discord_id)));
+
     for (const adminId of superAdminIds) {
+      if (knownIds.has(String(adminId))) {
+        continue;
+      }
       rows.push({
         discord_id: adminId,
         assigned_role: WEBSITE_ROLES.SUPER_ADMIN,

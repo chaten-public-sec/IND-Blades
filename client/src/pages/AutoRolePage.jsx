@@ -4,6 +4,7 @@ import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
 import SectionHeader from '../components/SectionHeader';
 import SearchPickerDialog from '../components/SearchPickerDialog';
+import { SelectField } from '../components/ui/select';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 
@@ -107,26 +108,26 @@ export default function AutoRolePage() {
           <CardContent className="space-y-4">
             {bindings.length ? bindings.map((binding, index) => (
               <div key={`${binding.role_a}-${binding.role_b}-${index}`} className="surface-soft grid gap-3 rounded-[24px] p-4 md:grid-cols-[1fr_1fr_auto]">
-                <select
+                <SelectField
                   value={binding.role_a}
                   onChange={(event) => setBindings((current) => current.map((item, currentIndex) => currentIndex === index ? { ...item, role_a: event.target.value } : item))}
-                  className="h-12 rounded-[20px] bg-transparent px-4 text-sm"
+                  className="h-12 rounded-[20px]"
                 >
                   <option value="">Trigger role</option>
                   {dashboard.roles.map((item) => (
                     <option key={item.id} value={item.id}>{item.name}</option>
                   ))}
-                </select>
-                <select
+                </SelectField>
+                <SelectField
                   value={binding.role_b}
                   onChange={(event) => setBindings((current) => current.map((item, currentIndex) => currentIndex === index ? { ...item, role_b: event.target.value } : item))}
-                  className="h-12 rounded-[20px] bg-transparent px-4 text-sm"
+                  className="h-12 rounded-[20px]"
                 >
                   <option value="">Provisioned role</option>
                   {dashboard.roles.map((item) => (
                     <option key={item.id} value={item.id}>{item.name}</option>
                   ))}
-                </select>
+                </SelectField>
                 <Button variant="ghost" onClick={() => setBindings((current) => current.filter((_, currentIndex) => currentIndex !== index))}>
                   Remove
                 </Button>

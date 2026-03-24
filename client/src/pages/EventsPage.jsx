@@ -6,6 +6,7 @@ import { hasPermission } from '../lib/access';
 import { formatDate } from '../lib/format';
 import SectionHeader from '../components/SectionHeader';
 import SearchPickerDialog from '../components/SearchPickerDialog';
+import { SelectField } from '../components/ui/select';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -21,6 +22,29 @@ const EMPTY_FORM = {
   targetId: '',
   mentionRoleId: '',
 };
+
+function validateEventForm(form) {
+  const errors = {};
+
+  if (!String(form.name || '').trim()) {
+    errors.name = 'Event name is required.';
+  }
+
+  if (!String(form.time || '').trim()) {
+    errors.time = 'Choose a time.';
+  }
+
+  if (!String(form.targetId || '').trim()) {
+    errors.targetId = 'Choose where this event should go.';
+  }
+
+  return errors;
+}
+
+function FieldError({ message }) {
+  if (!message) return null;
+  return <p className="text-sm font-medium text-rose-300">{message}</p>;
+}
 
 function targetOptions({ channels, roles, users, targetType }) {
   if (targetType === 'channel') {
@@ -57,6 +81,7 @@ export default function EventsPage() {
   const [detailsEvent, setDetailsEvent] = useState(null);
   const [reasonOpenId, setReasonOpenId] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
   const targetLabelMap = useMemo(() => {
@@ -75,6 +100,7 @@ export default function EventsPage() {
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
+    setErrors({});
     setDialogOpen(true);
   };
 
@@ -89,10 +115,17 @@ export default function EventsPage() {
       targetId: event.target_id || '',
       mentionRoleId: event.mention_role_id || '',
     });
+    setErrors({});
     setDialogOpen(true);
   };
 
   const saveEvent = async () => {
+    const nextErrors = validateEventForm(form);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -256,23 +289,33 @@ export default function EventsPage() {
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Event Name</label>
                 <input
                   value={form.name}
-                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                  className="surface-soft h-12 w-full rounded-[22px] px-4 text-sm"
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setForm((current) => ({ ...current, name: value }));
+                    setErrors((current) => ({ ...current, name: value.trim() ? '' : current.name }));
+                  }}
+                  className={`surface-soft h-12 w-full rounded-[22px] px-4 text-sm ${errors.name ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
                   placeholder="War Room"
                 />
+                <FieldError message={errors.name} />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Time</label>
                 <input
                   value={form.time}
-                  onChange={(event) => setForm((current) => ({ ...current, time: event.target.value }))}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setForm((current) => ({ ...current, time: value }));
+                    setErrors((current) => ({ ...current, time: value.trim() ? '' : current.time }));
+                  }}
                   type="time"
-                  className="surface-soft h-12 w-full rounded-[22px] px-4 text-sm"
+                  className={`surface-soft h-12 w-full rounded-[22px] px-4 text-sm ${errors.time ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
                 />
+                <FieldError message={errors.time} />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Delivery Mode</label>
-                <select
+                <SelectField
                   value={form.mode}
                   onChange={(event) => {
                     const nextMode = event.target.value;
@@ -283,30 +326,34 @@ export default function EventsPage() {
                       targetId: '',
                       mentionRoleId: '',
                     }));
+                    setErrors((current) => ({ ...current, targetId: '' }));
                   }}
-                  className="surface-soft h-12 w-full rounded-[22px] px-4 text-sm"
+                  className="h-12 rounded-[22px]"
                 >
                   <option value="server">Server</option>
                   <option value="dm">DM</option>
-                </select>
+                </SelectField>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Cadence</label>
-                <select
+                <SelectField
                   value={form.daily ? 'daily' : 'once'}
                   onChange={(event) => setForm((current) => ({ ...current, daily: event.target.value === 'daily' }))}
-                  className="surface-soft h-12 w-full rounded-[22px] px-4 text-sm"
+                  className="h-12 rounded-[22px]"
                 >
                   <option value="once">One time</option>
                   <option value="daily">Daily</option>
-                </select>
+                </SelectField>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Target Type</label>
-                <select
+                <SelectField
                   value={form.targetType}
-                  onChange={(event) => setForm((current) => ({ ...current, targetType: event.target.value, targetId: '' }))}
-                  className="surface-soft h-12 w-full rounded-[22px] px-4 text-sm"
+                  onChange={(event) => {
+                    setForm((current) => ({ ...current, targetType: event.target.value, targetId: '' }));
+                    setErrors((current) => ({ ...current, targetId: '' }));
+                  }}
+                  className="h-12 rounded-[22px]"
                 >
                   {form.mode === 'server' ? (
                     <>
@@ -319,17 +366,23 @@ export default function EventsPage() {
                       <option value="role">Role</option>
                     </>
                   )}
-                </select>
+                </SelectField>
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Target</label>
-                <Button type="button" variant="secondary" className="w-full justify-between" onClick={() => setTargetPickerOpen(true)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={`w-full justify-between ${errors.targetId ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
+                  onClick={() => setTargetPickerOpen(true)}
+                >
                   {currentTargetLabel}
                   <span className="text-xs text-[var(--text-muted)]">{form.targetId ? 'Selected' : 'Choose'}</span>
                 </Button>
+                <FieldError message={errors.targetId} />
               </div>
               {form.mode === 'server' ? (
                 <div className="space-y-2">
@@ -470,7 +523,10 @@ export default function EventsPage() {
         description="Search members, roles, or channels based on the current target type."
         items={targetOptions({ channels: dashboard.channels, roles: dashboard.roles, users: dashboard.users, targetType: form.targetType })}
         selectedIds={form.targetId ? [form.targetId] : []}
-        onConfirm={(ids) => setForm((current) => ({ ...current, targetId: ids[0] || '' }))}
+        onConfirm={(ids) => {
+          setForm((current) => ({ ...current, targetId: ids[0] || '' }));
+          setErrors((current) => ({ ...current, targetId: ids[0] ? '' : current.targetId }));
+        }}
         placeholder={`Search ${form.targetType}`}
       />
 
