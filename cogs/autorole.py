@@ -33,27 +33,39 @@ class AutoRole(commands.Cog):
         
         if not mapping: return
 
-        # Mapping is like {"1": "role_id_a", "2": "role_id_b", "3": "role_id_c"}
-        # We should find the role for the current strike count
-        target_role_id = mapping.get(str(count))
-        
-        # Collect all strike roles to remove others
-        all_strike_role_ids = set(mapping.values())
-        
+        target_role_ids = set()
+        all_strike_role_ids = set()
+
+        for strike_level, role_id in mapping.items():
+            if not role_id:
+                continue
+
+            role_id_str = str(role_id)
+            all_strike_role_ids.add(role_id_str)
+
+            try:
+                if int(strike_level) <= int(count):
+                    target_role_ids.add(role_id_str)
+            except (TypeError, ValueError):
+                continue
+
         roles_to_remove = []
-        for r_id in all_strike_role_ids:
-            if str(r_id) == str(target_role_id): continue
+        for r_id in all_strike_role_ids - target_role_ids:
             role = guild.get_role(int(r_id))
             if role and role in member.roles:
                 roles_to_remove.append(role)
         
         if roles_to_remove:
             await member.remove_roles(*roles_to_remove, reason=f"Strike count updated to {count}")
-            
-        if target_role_id:
-            target_role = guild.get_role(int(target_role_id))
+
+        roles_to_add = []
+        for r_id in target_role_ids:
+            target_role = guild.get_role(int(r_id))
             if target_role and target_role not in member.roles:
-                await member.add_roles(target_role, reason=f"Strike count updated to {count}")
+                roles_to_add.append(target_role)
+
+        if roles_to_add:
+            await member.add_roles(*roles_to_add, reason=f"Strike count updated to {count}")
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):

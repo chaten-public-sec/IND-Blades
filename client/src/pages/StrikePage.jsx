@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
-import { CheckCircle2, Gavel, ShieldAlert, ShieldCheck, Undo2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Gavel, Save, ShieldAlert, ShieldCheck, Undo2 } from 'lucide-react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/access';
 import { formatDate } from '../lib/format';
 import SectionHeader from '../components/SectionHeader';
 import SearchPickerDialog from '../components/SearchPickerDialog';
+import { SelectField } from '../components/ui/select';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -53,6 +54,26 @@ function validateStrikeForm(targets, form) {
   return errors;
 }
 
+function normalizeStrikeRoleDraft(strikeConfig) {
+  const mapping = strikeConfig?.strike_mapping || {};
+  return {
+    1: mapping['1'] ? String(mapping['1']) : '',
+    2: mapping['2'] ? String(mapping['2']) : '',
+    3: mapping['3'] ? String(mapping['3']) : '',
+  };
+}
+
+function validateStrikeRoleDraft(draft) {
+  const selected = [draft[1], draft[2], draft[3]].filter(Boolean);
+  if (new Set(selected).size !== selected.length) {
+    return {
+      duplicate: 'Each strike level should use a different role.',
+    };
+  }
+
+  return {};
+}
+
 function FieldError({ message }) {
   if (!message) return null;
   return <p className="text-sm font-medium text-rose-300">{message}</p>;
@@ -64,6 +85,7 @@ export default function StrikePage() {
   const canReview = hasPermission(dashboard.viewer, 'review_strikes');
   const canIssue = hasPermission(dashboard.viewer, 'issue_strikes');
   const canRevoke = hasPermission(dashboard.viewer, 'revoke_strikes');
+  const canManageStrikeConfig = hasPermission(dashboard.viewer, 'manage_strike_config');
 
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [issueDialogOpen, setIssueDialogOpen] = useState(false);
@@ -80,6 +102,14 @@ export default function StrikePage() {
   const [reviewNotes, setReviewNotes] = useState({});
   const [reviewingId, setReviewingId] = useState('');
   const [revokingId, setRevokingId] = useState('');
+  const [strikeRoleDraft, setStrikeRoleDraft] = useState(() => normalizeStrikeRoleDraft(dashboard.strikeConfig));
+  const [strikeRoleErrors, setStrikeRoleErrors] = useState({});
+  const [savingStrikeRoles, setSavingStrikeRoles] = useState(false);
+
+  useEffect(() => {
+    setStrikeRoleDraft(normalizeStrikeRoleDraft(dashboard.strikeConfig));
+    setStrikeRoleErrors({});
+  }, [dashboard.strikeConfig]);
 
   const userNameMap = useMemo(() => {
     const map = new Map();
@@ -191,6 +221,31 @@ export default function StrikePage() {
     }
   };
 
+  const saveStrikeRoleSettings = async () => {
+    const errors = validateStrikeRoleDraft(strikeRoleDraft);
+    setStrikeRoleErrors(errors);
+    if (Object.keys(errors).length) {
+      return;
+    }
+
+    setSavingStrikeRoles(true);
+    try {
+      await api.post('/api/strikes/config', {
+        strike_mapping: {
+          1: strikeRoleDraft[1] || null,
+          2: strikeRoleDraft[2] || null,
+          3: strikeRoleDraft[3] || null,
+        },
+      });
+      await dashboard.loadDashboard(true);
+      dashboard.showToast('success', 'Strike role settings saved.', 'strike-role-settings-save');
+    } catch (error) {
+      dashboard.handleError(error, 'Unable to save the strike role settings.');
+    } finally {
+      setSavingStrikeRoles(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <SectionHeader
@@ -226,6 +281,81 @@ export default function StrikePage() {
         <MetricCard label="Pending Requests" value={dashboard.strikeRequests.filter((item) => item.status === 'pending').length} note="Requests waiting for a management decision." />
         <MetricCard label="Active Across Members" value={activeStrikes.length} note="Live active strikes across the tracked roster." />
       </div>
+
+      {canManageStrikeConfig ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Strike Role Settings</CardTitle>
+            <CardDescription>Automatically assign Discord roles as a member reaches 1, 2, or 3 active strikes.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Select Role for 1 Strike</label>
+                <SelectField
+                  value={strikeRoleDraft[1]}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setStrikeRoleDraft((current) => ({ ...current, 1: value }));
+                    setStrikeRoleErrors(validateStrikeRoleDraft({ ...strikeRoleDraft, 1: value }));
+                  }}
+                  className={strikeRoleErrors.duplicate ? 'border border-rose-400/35 bg-rose-500/8' : ''}
+                >
+                  <option value="">No role</option>
+                  {dashboard.roles.map((role) => (
+                    <option key={role.id} value={role.id}>{role.name}</option>
+                  ))}
+                </SelectField>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Select Role for 2 Strikes</label>
+                <SelectField
+                  value={strikeRoleDraft[2]}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setStrikeRoleDraft((current) => ({ ...current, 2: value }));
+                    setStrikeRoleErrors(validateStrikeRoleDraft({ ...strikeRoleDraft, 2: value }));
+                  }}
+                  className={strikeRoleErrors.duplicate ? 'border border-rose-400/35 bg-rose-500/8' : ''}
+                >
+                  <option value="">No role</option>
+                  {dashboard.roles.map((role) => (
+                    <option key={role.id} value={role.id}>{role.name}</option>
+                  ))}
+                </SelectField>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Select Role for 3 Strikes</label>
+                <SelectField
+                  value={strikeRoleDraft[3]}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setStrikeRoleDraft((current) => ({ ...current, 3: value }));
+                    setStrikeRoleErrors(validateStrikeRoleDraft({ ...strikeRoleDraft, 3: value }));
+                  }}
+                  className={strikeRoleErrors.duplicate ? 'border border-rose-400/35 bg-rose-500/8' : ''}
+                >
+                  <option value="">No role</option>
+                  {dashboard.roles.map((role) => (
+                    <option key={role.id} value={role.id}>{role.name}</option>
+                  ))}
+                </SelectField>
+              </div>
+            </div>
+
+            <FieldError message={strikeRoleErrors.duplicate} />
+
+            <div className="flex justify-end">
+              <Button loading={savingStrikeRoles} onClick={saveStrikeRoleSettings}>
+                <Save className="h-4 w-4" />
+                Save
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>
