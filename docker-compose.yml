@@ -1,0 +1,35 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: ind-blades-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ind-blades-app
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    env_file:
+      - .env
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_DB_NAME: ind_blades_dashboard
+      CLIENT_URL: http://localhost:3001
+      ALLOWED_ORIGINS: http://localhost:3001,http://127.0.0.1:3001
+      DISCORD_REDIRECT_URI: http://localhost:3001/api/auth/discord/callback
+    ports:
+      - "3001:3001"
+    volumes:
+      - app_data:/app/data
+
+volumes:
+  mongo_data:
+  app_data:

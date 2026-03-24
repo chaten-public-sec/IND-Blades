@@ -13,7 +13,7 @@ export function DialogPortal({ children }) {
 export function DialogOverlay({ className, ...props }) {
   return (
     <DialogPrimitive.Overlay
-      className={cn('fixed inset-0 z-50 bg-black/60 dark:bg-slate-950/82 backdrop-blur-md', className)}
+      className={cn('fixed inset-0 z-50 bg-black/55 backdrop-blur-md', className)}
       {...props}
     />
   );
@@ -25,14 +25,14 @@ export function DialogContent({ className, children, showClose = true, ...props 
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          'surface-highlight fixed left-1/2 top-1/2 z-50 w-[min(96vw,760px)] -translate-x-1/2 -translate-y-1/2 rounded-[30px] p-0 text-[var(--text-main)] shadow-[0_32px_120px_rgba(0,0,0,0.15)] dark:shadow-[0_32px_120px_rgba(2,6,23,0.78)]',
+          'surface-highlight fixed left-1/2 top-1/2 z-50 w-[min(96vw,760px)] -translate-x-1/2 -translate-y-1/2 rounded-[28px] p-0 text-[var(--text-main)] shadow-[0_30px_80px_-38px_rgba(2,6,23,0.92)]',
           className
         )}
         {...props}
       >
         {children}
         {showClose ? (
-          <DialogPrimitive.Close className="absolute right-5 top-5 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-black/5 dark:bg-white/5 text-[var(--text-muted)] transition hover:bg-black/10 dark:hover:bg-white/10 hover:text-[var(--text-main)]">
+          <DialogPrimitive.Close className="absolute right-5 top-5 inline-flex h-10 w-10 items-center justify-center rounded-[16px] border border-[var(--border)] bg-[var(--bg-soft)] text-[var(--text-muted)] transition hover:bg-white/10 hover:text-[var(--text-main)]">
             <X className="h-4 w-4" />
           </DialogPrimitive.Close>
         ) : null}

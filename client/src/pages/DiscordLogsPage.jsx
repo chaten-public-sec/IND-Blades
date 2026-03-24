@@ -1,301 +1,253 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useState } from 'react';
+import { Pencil, Plus, Power, Save, Trash2 } from 'lucide-react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
-import { Card, CardContent } from '../components/ui/card';
+import { hasPermission } from '../lib/access';
+import SectionHeader from '../components/SectionHeader';
+import SearchPickerDialog from '../components/SearchPickerDialog';
 import { Button } from '../components/ui/button';
-import { SelectField } from '../components/ui/select';
-import { Switch } from '../components/ui/switch';
-import { Label } from '../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '../components/ui/dialog';
-import { Plus, ListFilter, Trash2, Edit3, Shield, Mic, MessageSquare, Save, Settings2 } from 'lucide-react';
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
-const LOG_TYPES = [
-  { id: 'ban', label: 'Bans', category: 'Moderation', icon: Shield },
-  { id: 'unban', label: 'Unbans', category: 'Moderation', icon: Shield },
-  { id: 'kick', label: 'Kicks', category: 'Moderation', icon: Shield },
-  { id: 'timeout', label: 'Timeouts', category: 'Moderation', icon: Shield },
-  { id: 'join', label: 'VC Join', category: 'Voice', icon: Mic },
-  { id: 'leave', label: 'VC Leave', category: 'Voice', icon: Mic },
-  { id: 'move', label: 'VC Move', category: 'Voice', icon: Mic },
-  { id: 'mute', label: 'VC Mute', category: 'Voice', icon: Mic },
-  { id: 'deafen', label: 'VC Deafen', category: 'Voice', icon: Mic },
-  { id: 'delete', label: 'Msg Delete', category: 'Message', icon: MessageSquare },
-  { id: 'edit', label: 'Msg Edit', category: 'Message', icon: MessageSquare },
-];
-
-export default function DiscordLogsPage() {
-  const { channels, showToast, handleError } = useDashboardContext();
-  const [enabled, setEnabled] = useState(false);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  // Dialog State
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingIdx, setEditingIdx] = useState(null);
-  const [formData, setFormData] = useState({
+function emptyCategory() {
+  return {
     name: '',
     enabled: true,
     logs: [],
-    channel_id: ''
-  });
-  const [formErrors, setFormErrors] = useState({});
+    channel_id: null,
+  };
+}
+
+export default function DiscordLogsPage() {
+  const dashboard = useDashboardContext();
+  const [categories, setCategories] = useState([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [editingIndex, setEditingIndex] = useState(-1);
+  const [draft, setDraft] = useState(emptyCategory());
+  const [saving, setSaving] = useState(false);
+  const canManageDiscordLogs = hasPermission(dashboard.viewer, 'manage_discord_logs');
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const r = await api.get('/api/discord-logs');
-        setEnabled(Boolean(r.data?.enabled));
-        setCategories(Array.isArray(r.data?.categories) ? r.data.categories : []);
-      } catch (err) {
-        handleError(err, 'Failed to load log settings.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [handleError]);
+    setCategories(Array.isArray(dashboard.discordLogs.categories) ? dashboard.discordLogs.categories : []);
+  }, [dashboard.discordLogs]);
 
-  const saveConfig = async (nextEnabled = enabled, nextCategories = categories) => {
+  const persistCategories = async (nextCategories = categories, enabled = dashboard.discordLogs.enabled) => {
     setSaving(true);
     try {
       await api.post('/api/discord-logs', {
-        enabled: nextEnabled,
-        categories: nextCategories
+        enabled,
+        categories: nextCategories,
       });
-      showToast('success', 'Log settings updated', 'discord-logs-sync');
-    } catch (err) {
-      handleError(err, 'Failed to save settings.');
+      await dashboard.loadDashboard(true);
+      dashboard.showToast('success', 'Log categories saved.', 'discord-log-settings');
+    } catch (error) {
+      dashboard.handleError(error, 'Unable to save the log categories.');
     } finally {
       setSaving(false);
+      setPickerOpen(false);
     }
   };
+
+  const channelName = (channelId) =>
+    dashboard.channels.find((item) => String(item.id) === String(channelId || ''))?.name || 'Choose channel';
 
   const openCreate = () => {
-    setEditingIdx(null);
-    setFormData({ name: '', enabled: true, logs: [], channel_id: '' });
-    setFormErrors({});
+    setEditingIndex(-1);
+    setDraft(emptyCategory());
     setDialogOpen(true);
   };
 
-  const openEdit = (idx) => {
-    const cat = categories[idx];
-    setEditingIdx(idx);
-    setFormData({ ...cat });
-    setFormErrors({});
-    setDialogOpen(true);
-  };
-
-  const validate = () => {
-    const e = {};
-    if (!formData.name.trim()) e.name = 'Name is required';
-    if (formData.logs.length === 0) e.logs = 'Select at least one log type';
-    if (!formData.channel_id) e.channel = 'Select a destination channel';
-    setFormErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const handleSaveCategory = () => {
-    if (!validate()) return;
-
-    let next;
-    if (editingIdx !== null) {
-      next = [...categories];
-      next[editingIdx] = formData;
-    } else {
-      next = [...categories, formData];
-    }
-
-    setCategories(next);
-    saveConfig(enabled, next);
-    setDialogOpen(false);
-  };
-
-  const handleDelete = (idx) => {
-    const next = categories.filter((_, i) => i !== idx);
-    setCategories(next);
-    saveConfig(enabled, next);
-  };
-
-  const toggleMaster = (v) => {
-    setEnabled(v);
-    saveConfig(v, categories);
-  };
-
-  const toggleCategoryEnabled = (idx, v) => {
-    const next = [...categories];
-    next[idx].enabled = v;
-    setCategories(next);
-    saveConfig(enabled, next);
-  };
-
-  const toggleLogType = (id) => {
-    setFormData(prev => {
-      const nextLogs = prev.logs.includes(id)
-        ? prev.logs.filter(l => l !== id)
-        : [...prev.logs, id];
-      return { ...prev, logs: nextLogs };
+  const openEdit = (category, index) => {
+    setEditingIndex(index);
+    setDraft({
+      name: category.name || '',
+      enabled: category.enabled !== false,
+      logs: Array.isArray(category.logs) ? category.logs : [],
+      channel_id: category.channel_id || null,
     });
+    setDialogOpen(true);
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-500" />
-      </div>
-    );
-  }
+  const saveDraft = async () => {
+    const nextCategories = editingIndex >= 0
+      ? categories.map((item, index) => index === editingIndex ? draft : item)
+      : [...categories, draft];
+
+    setCategories(nextCategories);
+    setDialogOpen(false);
+    await persistCategories(nextCategories);
+  };
+
+  const removeCategory = async (indexToRemove) => {
+    const nextCategories = categories.filter((_, index) => index !== indexToRemove);
+    setCategories(nextCategories);
+    await persistCategories(nextCategories);
+  };
+
+  const toggleCategory = async (indexToToggle) => {
+    const nextCategories = categories.map((item, index) => index === indexToToggle ? { ...item, enabled: !item.enabled } : item);
+    setCategories(nextCategories);
+    await persistCategories(nextCategories);
+  };
 
   return (
-    <div className="space-y-8 animate-[fadeIn_0.3s_ease]">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-3xl font-black text-[var(--text-main)] tracking-tight">Advanced Logs</h2>
-          <p className="mt-1 text-sm text-[var(--text-muted)] font-medium">Create multi-channel logging filters for specific server events.</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 surface-soft rounded-2xl px-4 h-12 border border-white/5">
-             <Label className="text-xs font-bold uppercase tracking-widest opacity-70">Master Engine</Label>
-             <Switch checked={enabled} onCheckedChange={toggleMaster} />
-          </div>
-          <Button onClick={openCreate} className="h-12 px-6 gap-2 shadow-xl shadow-cyan-500/10">
-            <Plus className="h-5 w-5" />
-            Create Category
+    <div className="space-y-6">
+      <SectionHeader
+        eyebrow="Logs"
+        title="Logs"
+        description="Create clean log categories, choose what each one listens to, and route everything to the right channel."
+        actions={canManageDiscordLogs ? (
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Create Log Category
           </Button>
-        </div>
-      </div>
+        ) : null}
+      />
 
-      {!enabled && (
-        <Card className="border-amber-500/20 bg-amber-500/[0.02]">
-          <CardContent className="py-12 text-center">
-             <Settings2 className="h-12 w-12 text-amber-500/50 mx-auto mb-4" />
-             <h3 className="text-lg font-bold text-amber-200">Logging Engine Paused</h3>
-             <p className="text-sm text-amber-500/60 mt-1">Enable the Master Engine above to resume event processing.</p>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Master Toggle</CardTitle>
+          <CardDescription>Turn Discord log category delivery on or off without losing the saved setup.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-4">
+          <Badge variant={dashboard.discordLogs.enabled ? 'success' : 'danger'}>
+            {dashboard.discordLogs.enabled ? 'Enabled' : 'Disabled'}
+          </Badge>
+          {canManageDiscordLogs ? (
+            <Button variant="secondary" loading={saving} onClick={() => persistCategories(categories, !dashboard.discordLogs.enabled)}>
+              <Power className="h-4 w-4" />
+              {dashboard.discordLogs.enabled ? 'Disable Delivery' : 'Enable Delivery'}
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {categories.map((cat, idx) => (
-          <Card key={idx} className={`group relative overflow-hidden transition-all hover:border-cyan-500/30 ${!cat.enabled ? 'opacity-60 grayscale-[0.5]' : ''}`}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-[var(--text-main)]">{cat.name}</h3>
-                  <div className="flex items-center gap-2 text-xs font-medium text-cyan-400">
-                    <ListFilter className="h-3.5 w-3.5" />
-                    <span>#{channels.find(c => c.id === cat.channel_id)?.name || 'Unknown Channel'}</span>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {categories.length ? categories.map((category, index) => (
+          <Card key={`${category.name}-${index}`} className={category.enabled ? 'surface-highlight' : ''}>
+            <CardContent className="space-y-5 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="text-xl font-semibold text-[var(--text-main)]">{category.name || `Category ${index + 1}`}</h3>
+                    <Badge variant={category.enabled ? 'success' : 'neutral'}>
+                      {category.enabled ? 'Enabled' : 'Disabled'}
+                    </Badge>
                   </div>
+                  <p className="mt-2 text-sm text-[var(--text-muted)]">Channel: {channelName(category.channel_id)}</p>
                 </div>
-                <Switch checked={cat.enabled} onCheckedChange={(v) => toggleCategoryEnabled(idx, v)} />
               </div>
 
-              <div className="flex flex-wrap gap-1.5 mb-6">
-                 {cat.logs.map(logId => {
-                   const logType = LOG_TYPES.find(lt => lt.id === logId);
-                   return (
-                     <Badge key={logId} variant="secondary" className="px-2 py-0.5 text-[10px] bg-white/5 border-white/5">
-                       {logType?.label || logId}
-                     </Badge>
-                   );
-                 })}
+              <div className="space-y-3">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Selected Logs</p>
+                <div className="flex flex-wrap gap-2">
+                  {(category.logs || []).length ? category.logs.map((logKey) => (
+                    <Badge key={logKey} variant="neutral">{logKey}</Badge>
+                  )) : (
+                    <span className="text-sm text-[var(--text-muted)]">No log keys selected.</span>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-4 border-t border-white/5">
-                <Button size="sm" variant="ghost" onClick={() => openEdit(idx)} className="h-9 gap-2 flex-1 hover:bg-cyan-500/10 hover:text-cyan-400">
-                  <Edit3 className="h-4 w-4" />
-                  Edit
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => handleDelete(idx)} className="h-9 w-9 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-500">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+              {canManageDiscordLogs ? (
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="secondary" onClick={() => openEdit(category, index)}>
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </Button>
+                  <Button variant="secondary" onClick={() => toggleCategory(index)}>
+                    <Power className="h-4 w-4" />
+                    {category.enabled ? 'Disable' : 'Enable'}
+                  </Button>
+                  <Button variant="danger" onClick={() => removeCategory(index)}>
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
-        ))}
-        {categories.length === 0 && (
-          <div className="md:col-span-2 border-2 border-dashed border-white/5 rounded-3xl py-24 text-center">
-             <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/3 border border-white/5 mb-4 mb-4">
-                <ListFilter className="h-8 w-8 text-[var(--text-muted)]" />
-             </div>
-             <h3 className="text-xl font-bold text-[var(--text-main)]">No Log Categories</h3>
-             <p className="text-sm text-[var(--text-muted)] mt-2">Create your first advanced logging filter to monitor server activity.</p>
-             <Button onClick={openCreate} variant="ghost" className="mt-6 border border-white/10 hover:bg-white/5">Get Started</Button>
-          </div>
+        )) : (
+          <Card className="xl:col-span-2">
+            <CardContent className="surface-soft m-6 rounded-[24px] px-5 py-12 text-center text-sm text-[var(--text-muted)]">
+              No log categories have been created yet.
+            </CardContent>
+          </Card>
         )}
       </div>
 
-      {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[min(96vw,600px)] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[min(96vw,760px)]">
           <DialogHeader>
-            <DialogTitle>{editingIdx !== null ? 'Edit Log Category' : 'Create Log Category'}</DialogTitle>
-            <DialogDescription>Define what events to log and where they should be sent.</DialogDescription>
+            <DialogTitle>{editingIndex >= 0 ? 'Edit Log Category' : 'Create Log Category'}</DialogTitle>
+            <DialogDescription>Choose a name, add the log keys you want, and route this category to a channel.</DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <div className="space-y-6">
+            <div className="grid gap-4">
               <div className="space-y-2">
-                <Label className={`text-[10px] font-bold uppercase tracking-widest ${formErrors.name ? 'text-red-400' : 'text-[var(--text-muted)]'}`}>Category Name</Label>
+                <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Category Name</label>
                 <input
-                  value={formData.name}
-                  onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
-                  placeholder="e.g., Critical Moderation"
-                  className={`surface-soft h-12 w-full rounded-2xl px-4 text-sm text-[var(--text-main)] focus:border-cyan-500/30 outline-none transition-all ${formErrors.name ? 'border-red-500/50 bg-red-500/5' : ''}`}
+                  value={draft.name}
+                  onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+                  className="surface-soft h-12 w-full rounded-[22px] px-4 text-sm"
+                  placeholder="Moderation Actions"
                 />
-                {formErrors.name && <p className="text-[10px] font-medium text-red-400">{formErrors.name}</p>}
               </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className={`text-[10px] font-bold uppercase tracking-widest ${formErrors.logs ? 'text-red-400' : 'text-[var(--text-muted)]'}`}>Select Event Types</Label>
-                  <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">{formData.logs.length} selected</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {LOG_TYPES.map(type => (
-                    <button
-                      key={type.id}
-                      onClick={() => toggleLogType(type.id)}
-                      className={`flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-all ${
-                        formData.logs.includes(type.id)
-                          ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-400'
-                          : 'border-white/5 bg-white/3 text-[var(--text-muted)] hover:bg-white/5'
-                      }`}
-                    >
-                      <type.icon className="h-4 w-4" />
-                      <div>
-                        <p className="text-[11px] font-bold leading-none">{type.label}</p>
-                        <p className="mt-1 text-[9px] font-medium opacity-50">{type.category}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                {formErrors.logs && <p className="text-[10px] font-medium text-red-400">{formErrors.logs}</p>}
-              </div>
-
               <div className="space-y-2">
-                <Label className={`text-[10px] font-bold uppercase tracking-widest ${formErrors.channel ? 'text-red-400' : 'text-[var(--text-muted)]'}`}>Log Channel</Label>
-                <SelectField
-                  value={formData.channel_id}
-                  onChange={(e) => setFormData(p => ({ ...p, channel_id: e.target.value }))}
-                  className={formErrors.channel ? 'border-red-500/50 bg-red-500/5' : ''}
+                <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Selected Channel</label>
+                <Button variant="secondary" className="w-full justify-between" onClick={() => setPickerOpen(true)}>
+                  {channelName(draft.channel_id)}
+                  <span className="text-xs text-[var(--text-muted)]">Choose channel</span>
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Log Keys</label>
+                <textarea
+                  value={(draft.logs || []).join('\n')}
+                  onChange={(event) => setDraft((current) => ({
+                    ...current,
+                    logs: event.target.value.split(/\r?\n|,/).map((value) => value.trim()).filter(Boolean),
+                  }))}
+                  className="surface-soft min-h-32 rounded-[22px] px-4 py-3 text-sm"
+                  placeholder="One log key per line, for example message_delete"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setDraft((current) => ({ ...current, enabled: !current.enabled }))}
                 >
-                  <option value="">Select a channel...</option>
-                  {(channels || []).map(c => <option key={c.id} value={c.id}>#{c.name}</option>)}
-                </SelectField>
-                {formErrors.channel && <p className="text-[10px] font-medium text-red-400">{formErrors.channel}</p>}
+                  <Power className="h-4 w-4" />
+                  {draft.enabled ? 'Set Disabled' : 'Set Enabled'}
+                </Button>
+                <Badge variant={draft.enabled ? 'success' : 'neutral'}>
+                  {draft.enabled ? 'Enabled' : 'Disabled'}
+                </Badge>
               </div>
             </div>
           </DialogBody>
           <DialogFooter>
-             <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
-             <Button onClick={handleSaveCategory} loading={saving}>
-               <Save className="h-4 w-4 mr-2" />
-               {editingIdx !== null ? 'Update Category' : 'Create Category'}
-             </Button>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button loading={saving} onClick={saveDraft}>
+              <Save className="h-4 w-4" />
+              Save Category
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SearchPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        title="Choose Channel"
+        description="Search the Discord channels available for this log category."
+        items={dashboard.channels.map((item) => ({ id: item.id, label: item.name, description: `Channel ID ${item.id}` }))}
+        selectedIds={draft.channel_id ? [String(draft.channel_id)] : []}
+        onConfirm={(ids) => setDraft((current) => ({ ...current, channel_id: ids[0] || null }))}
+        placeholder="Search channels"
+      />
     </div>
   );
 }

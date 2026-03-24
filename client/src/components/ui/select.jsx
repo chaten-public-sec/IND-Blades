@@ -6,7 +6,7 @@ export function SelectField({ className, icon = true, children, ...props }) {
     <div className="relative">
       <select
         className={cn(
-          'surface-soft h-11 w-full appearance-none rounded-2xl px-4 pr-11 text-sm text-[var(--text-main)] transition focus:border-cyan-500/40 focus:ring-2 focus:ring-cyan-500/20',
+          'surface-soft h-11 w-full appearance-none rounded-2xl px-4 pr-11 text-sm text-[var(--text-main)] transition focus:border-[rgba(49,94,251,0.28)] focus:ring-2 focus:ring-[rgba(49,94,251,0.14)]',
           className
         )}
         {...props}

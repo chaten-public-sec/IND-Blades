@@ -1,35 +1,26 @@
-# Base image
-FROM node:22
+FROM node:22-bookworm
 
-# Install Python
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip && \
+    apt-get install -y --no-install-recommends python3 python3-pip bash && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
 
-# Copy all files first
-COPY . .
-
-# Install Python deps
+COPY requirements.txt ./
 RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
-# Install backend deps
-WORKDIR /app/server
-RUN npm install --production
+COPY server/package*.json ./server/
+RUN npm install --prefix server --omit=dev
 
-# Install frontend deps and build
-WORKDIR /app/client
-RUN npm install && npm run build
+COPY client/package*.json ./client/
+RUN npm install --prefix client
 
-# Create required folders
-WORKDIR /app
+COPY . .
+
+RUN npm run build --prefix client
 RUN mkdir -p /app/data
 
-# Expose port
-EXPOSE 10000
+EXPOSE 3001
 
-# Start server (which starts bot)
-CMD ["node", "server/server.js"]
+CMD ["bash", "/app/docker/start.sh"]

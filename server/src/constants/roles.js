@@ -1,0 +1,36 @@
+const WEBSITE_ROLES = Object.freeze({
+  SUPER_ADMIN: 'super_admin',
+  LEADER: 'leader',
+  DEPUTY: 'deputy',
+  HIGH_COMMAND: 'high_command',
+  FAM_MEMBER: 'fam_member'
+});
+
+const MANAGEMENT_ROLES = Object.freeze([
+  WEBSITE_ROLES.LEADER,
+  WEBSITE_ROLES.DEPUTY,
+  WEBSITE_ROLES.HIGH_COMMAND
+]);
+
+const ROLE_PRIORITY = Object.freeze([
+  WEBSITE_ROLES.SUPER_ADMIN,
+  WEBSITE_ROLES.LEADER,
+  WEBSITE_ROLES.DEPUTY,
+  WEBSITE_ROLES.HIGH_COMMAND,
+  WEBSITE_ROLES.FAM_MEMBER
+]);
+
+const ROLE_LABELS = Object.freeze({
+  [WEBSITE_ROLES.SUPER_ADMIN]: 'Super Admin',
+  [WEBSITE_ROLES.LEADER]: 'Leader',
+  [WEBSITE_ROLES.DEPUTY]: 'Deputy',
+  [WEBSITE_ROLES.HIGH_COMMAND]: 'High Command',
+  [WEBSITE_ROLES.FAM_MEMBER]: 'Fam Member'
+});
+
+module.exports = {
+  WEBSITE_ROLES,
+  MANAGEMENT_ROLES,
+  ROLE_PRIORITY,
+  ROLE_LABELS
+};

@@ -7,18 +7,34 @@ services:
     envVars:
       - key: PORT
         value: 10000
+      - key: CLIENT_URL
+        value: https://ind-blades-system.onrender.com
       - key: DASHBOARD_KEY
         sync: false # Set this in Render Dashboard for security
       - key: DISCORD_TOKEN
         sync: false # Set this in Render Dashboard for security
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_REDIRECT_URI
+        value: https://ind-blades-system.onrender.com/api/auth/discord/callback
       - key: GUILD_ID
         sync: false # Set this in Render Dashboard for security
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: ind_blades_dashboard
       - key: PERPLEXITY_API_KEY
         sync: false # Set this in Render Dashboard for security
       - key: SESSION_SECRET
         generateValue: true # Render will generate a unique secret for you
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SUPER_ADMIN_IDS
+        sync: false
       - key: ALLOWED_ORIGINS
-        value: "*" # Change this to your Render URL after first deployment for better security
+        value: https://ind-blades-system.onrender.com
     disk:
       name: ind_blades_data
       mountPath: /app/data

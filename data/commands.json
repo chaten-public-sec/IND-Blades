@@ -188,8 +188,9 @@
       "reason": "1",
       "strike_count": 1
     },
-    "status": "pending",
-    "created_at": "2026-03-23T16:59:11.382Z"
+    "status": "done",
+    "created_at": "2026-03-23T16:59:11.382Z",
+    "completed_at": "2026-03-24T11:50:04.928061+00:00"
   },
   {
     "id": "f1aa2ad5-2cc5-421f-b217-2750429f3038",
@@ -198,8 +199,9 @@
       "user_id": "1213688605168635945",
       "strike_count": 0
     },
-    "status": "pending",
-    "created_at": "2026-03-23T16:59:20.996Z"
+    "status": "done",
+    "created_at": "2026-03-23T16:59:20.996Z",
+    "completed_at": "2026-03-24T11:50:04.928525+00:00"
   },
   {
     "id": "647d4db4-c9fc-40f5-aea6-74565040c59a",
@@ -209,8 +211,9 @@
       "reason": "Missed event",
       "strike_count": 1
     },
-    "status": "pending",
-    "created_at": "2026-03-23T17:12:18.147Z"
+    "status": "done",
+    "created_at": "2026-03-23T17:12:18.147Z",
+    "completed_at": "2026-03-24T11:50:04.928943+00:00"
   },
   {
     "id": "c6f051fa-97f5-42c3-8682-45354047685f",
@@ -219,8 +222,9 @@
       "user_id": "1477371037120200724",
       "strike_count": 0
     },
-    "status": "pending",
-    "created_at": "2026-03-23T17:12:33.026Z"
+    "status": "done",
+    "created_at": "2026-03-23T17:12:33.026Z",
+    "completed_at": "2026-03-24T11:50:04.929347+00:00"
   },
   {
     "id": "1a592ec5-1054-462d-a1d1-2d52fb0e204f",
@@ -230,8 +234,9 @@
       "reason": ".",
       "strike_count": 1
     },
-    "status": "pending",
-    "created_at": "2026-03-23T17:14:47.378Z"
+    "status": "done",
+    "created_at": "2026-03-23T17:14:47.378Z",
+    "completed_at": "2026-03-24T11:50:04.929737+00:00"
   },
   {
     "id": "fc849093-5646-42bf-ac52-637ab312fc95",
@@ -240,7 +245,69 @@
       "user_id": "1477371037120200724",
       "strike_count": 0
     },
-    "status": "pending",
-    "created_at": "2026-03-23T17:14:59.359Z"
+    "status": "done",
+    "created_at": "2026-03-23T17:14:59.359Z",
+    "completed_at": "2026-03-24T11:50:04.930127+00:00"
+  },
+  {
+    "id": "c0213c16-09be-427c-9308-ba2c54c42395",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1478106773595357185"
+    },
+    "status": "completed",
+    "created_at": "2026-03-24T12:36:07.873Z",
+    "completed_at": "2026-03-24T12:36:13.096261+00:00"
+  },
+  {
+    "id": "2941c685-f883-4eb1-903d-fa3a94c7c2af",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1478106773595357185"
+    },
+    "status": "completed",
+    "created_at": "2026-03-24T14:23:30.334Z",
+    "completed_at": "2026-03-24T14:23:33.316693+00:00"
+  },
+  {
+    "id": "bbba7972-6c44-484d-a69a-53b2860bd296",
+    "type": "welcome_preview",
+    "payload": {
+      "channel_id": "1478106773595357185"
+    },
+    "status": "completed",
+    "created_at": "2026-03-24T14:23:52.395Z",
+    "completed_at": "2026-03-24T14:23:57.955620+00:00"
+  },
+  {
+    "id": "f2359942-7bfb-49ce-a317-8273814c6615",
+    "type": "event_created",
+    "payload": {
+      "event": {
+        "id": "e39ad895-616f-4196-bab9-59518615a97a",
+        "desc": "Test",
+        "time": "20:00",
+        "daily": false,
+        "enabled": true,
+        "delivery_mode": "server",
+        "target_type": "channel",
+        "target_id": "1478106725176447046",
+        "mention_role_id": "1477603074594967604",
+        "channel_id": "1478106725176447046",
+        "creator_id": null,
+        "attending": [],
+        "not_attending": [],
+        "vote_message_id": null,
+        "vote_message_map": {},
+        "last_vote_date": null,
+        "last_reminded_date": null,
+        "event_date": null,
+        "voting_closed": false,
+        "vc_channel_id": null
+      }
+    },
+    "status": "done",
+    "created_at": "2026-03-24T14:24:34.744Z",
+    "completed_at": "2026-03-24T14:24:35.513785+00:00"
   }
 ]

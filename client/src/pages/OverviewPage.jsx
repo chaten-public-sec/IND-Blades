@@ -1,185 +1,222 @@
+import { Link } from 'react-router-dom';
+import { Activity, ArrowRight, Bell, CalendarDays, ShieldAlert, Trophy, Users2 } from 'lucide-react';
 import { useDashboardContext } from '../lib/DashboardContext';
-import { Card, CardContent } from '../components/ui/card';
+import { hasPermission } from '../lib/access';
+import { formatDate, formatDuration, formatShortDate, initials } from '../lib/format';
+import SectionHeader from '../components/SectionHeader';
+import RoleBadge from '../components/RoleBadge';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Users, Calendar, Activity, Zap, ShieldCheck, Bell, Server, Clock } from 'lucide-react';
 
-function formatDate(v) {
-  if (!v) return 'N/A';
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? 'N/A' : d.toLocaleString();
+function StatCard({ icon: Icon, label, value, tone = 'default', note }) {
+  const toneClasses = {
+    default: 'bg-[var(--primary-soft)] text-[var(--primary)]',
+    success: 'bg-emerald-500/12 text-emerald-400',
+    warning: 'bg-amber-500/12 text-amber-400',
+  };
+
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-6">
+        <div className={`flex h-11 w-11 items-center justify-center rounded-[16px] ${toneClasses[tone] || toneClasses.default}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-[var(--text-muted)]">{label}</p>
+          <p className="mt-2 text-3xl font-semibold text-[var(--text-main)]">{value}</p>
+          {note ? <p className="mt-2 text-sm text-[var(--text-muted)]">{note}</p> : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function OverviewPage() {
-  const { roster, events, ping, liveSync, health, config } = useDashboardContext();
-  const apiOnline = ping >= 0;
-  const activeEvents = events.filter((e) => e.enabled).length;
+  const dashboard = useDashboardContext();
+  const topLeaders = dashboard.leaderboard.slice(0, 5);
+  const latestEvents = dashboard.events.slice(0, 3);
+  const recentNotifications = dashboard.notificationCenter.slice(0, 3);
+  const trackedMembers = dashboard.roster.length;
+  const activeStrikeCount = dashboard.users.reduce(
+    (total, user) => total + (user.strikes || []).filter((item) => item.status === 'active').length,
+    0
+  );
+  const weeklyScore = Math.round((Number(dashboard.myProfile?.voice_time || 0) / 60) * 2 + Number(dashboard.myProfile?.messages || 0));
+  const myRank = Math.max(dashboard.leaderboard.findIndex((item) => String(item.id) === String(dashboard.viewer.id)) + 1, 1);
+
+  const quickActions = [
+    { label: 'Activity', path: '/dashboard/activity', icon: Activity, show: hasPermission(dashboard.viewer, 'view_activity') },
+    { label: 'Events', path: '/dashboard/events', icon: CalendarDays, show: hasPermission(dashboard.viewer, 'view_events') },
+    { label: 'Strikes', path: '/dashboard/strikes', icon: ShieldAlert, show: hasPermission(dashboard.viewer, 'view_self_strikes') || hasPermission(dashboard.viewer, 'apply_strikes') || hasPermission(dashboard.viewer, 'issue_strikes') },
+    { label: 'Notifications', path: '/dashboard/notifications', icon: Bell, show: hasPermission(dashboard.viewer, 'view_notifications') },
+  ].filter((item) => item.show);
 
   return (
-    <div className="space-y-8 animate-[fadeIn_0.3s_ease]">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-black tracking-tight text-[var(--text-main)]">Overview</h2>
-          <p className="mt-1 text-sm text-[var(--text-muted)] font-medium">Global intelligence and system health.</p>
-        </div>
-        <div className="flex items-center gap-2 rounded-2xl bg-white/5 border border-white/5 px-4 py-2">
-           <div className={`h-2 w-2 rounded-full ${liveSync ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-           <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-main)]">
-              {liveSync ? 'Real-time Streaming' : 'Resting Connection'}
-           </span>
-        </div>
-      </div>
-
-      {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="relative overflow-hidden group">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-start">
-               <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Total Members</p>
-                  <p className="text-4xl font-black text-[var(--text-main)]">{roster.length}</p>
-               </div>
-               <div className="rounded-xl bg-cyan-500/10 p-2.5 text-cyan-400 transition-transform group-hover:scale-110">
-                  <Users className="h-6 w-6" />
-               </div>
-            </div>
-            <div className="mt-4 h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-               <div className="h-full bg-cyan-500 w-full opacity-50" />
-            </div>
-          </CardContent>
-          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl" />
-        </Card>
-
-        <Card className="relative overflow-hidden group">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-start">
-               <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Active Events</p>
-                  <p className="text-4xl font-black text-[var(--text-main)]">{activeEvents}</p>
-               </div>
-               <div className="rounded-xl bg-amber-500/10 p-2.5 text-amber-400 transition-transform group-hover:scale-110">
-                  <Calendar className="h-6 w-6" />
-               </div>
-            </div>
-            <div className="mt-4 flex items-center gap-2">
-               <Badge variant="secondary" className="text-[10px]">{events.length} Total</Badge>
-               <span className="text-[10px] text-[var(--text-muted)] font-medium">Tracked events</span>
-            </div>
-          </CardContent>
-          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl" />
-        </Card>
-
-        <Card className="relative overflow-hidden group border-emerald-500/20">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-start">
-               <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">API Latency</p>
-                  <p className={`text-4xl font-black ${apiOnline ? 'text-emerald-400' : 'text-rose-400'}`}>
-                     {apiOnline ? `${ping}ms` : 'FAIL'}
-                  </p>
-               </div>
-               <div className={`rounded-xl ${apiOnline ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'} p-2.5 transition-transform group-hover:scale-110`}>
-                  <Activity className="h-6 w-6" />
-               </div>
-            </div>
-            <p className="mt-4 text-[10px] font-medium text-[var(--text-muted)] tracking-tight">
-               Endpoint response strength
-            </p>
-          </CardContent>
-          <div className={`absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-24 h-24 ${apiOnline ? 'bg-emerald-500/10' : 'bg-rose-500/10'} rounded-full blur-2xl`} />
-        </Card>
-
-        <Card className="relative overflow-hidden group">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-start">
-               <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Bot Status</p>
-                  <p className="text-4xl font-black text-[var(--text-main)]">{liveSync ? 'ACTIVE' : 'IDLE'}</p>
-               </div>
-               <div className="rounded-xl bg-indigo-500/10 p-2.5 text-indigo-400 transition-transform group-hover:scale-110">
-                  <Zap className="h-6 w-6" />
-               </div>
-            </div>
-            <div className="mt-4 flex items-center gap-2">
-               <div className={`h-2 w-2 rounded-full ${liveSync ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
-               <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
-                  {liveSync ? 'System Uplink' : 'Offline Mode'}
-               </span>
-            </div>
-          </CardContent>
-          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl" />
-        </Card>
-      </div>
-
-      {/* Health */}
-      <Card className="overflow-hidden border border-white/5 bg-white/[0.02]">
-        <CardContent className="pt-8">
-          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-               <div className="rounded-2xl bg-emerald-500/10 p-3 text-emerald-400">
-                  <ShieldCheck className="h-6 w-6" />
-               </div>
-               <div>
-                  <h3 className="text-xl font-bold text-[var(--text-main)]">System Intelligence</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Operational Integrity</p>
-               </div>
-            </div>
-            <Badge variant={apiOnline ? 'success' : 'danger'} className="px-4 py-1.5 text-sm uppercase font-black tracking-widest">
-               {apiOnline ? 'Operational' : 'Degraded'}
+    <div className="space-y-6">
+      <SectionHeader
+        eyebrow="Overview"
+        title={`Welcome back, ${dashboard.viewer.display_name}`}
+        description="This dashboard stays simple for members and unlocks more controls automatically as your role increases."
+        actions={(
+          <>
+            <RoleBadge role={dashboard.viewer.primary_role} />
+            <Badge variant={dashboard.botStatus === 'connected' ? 'success' : 'danger'}>
+              Bot {dashboard.botStatus === 'connected' ? 'Online' : 'Offline'}
             </Badge>
-          </div>
-          
-          <div className="grid gap-10 lg:grid-cols-3">
-            <div className="space-y-3 p-6 rounded-3xl bg-white/[0.03] border border-white/5 transition-all hover:bg-white/[0.05]">
-              <div className="flex items-center gap-2 mb-2">
-                 <Server className="h-4 w-4 text-cyan-400" />
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Discord Credentials</p>
+          </>
+        )}
+      />
+
+      <div className="grid gap-4 xl:grid-cols-4">
+        <StatCard icon={CalendarDays} label="Total Events" value={dashboard.events.length} note="Scheduled items in the current system." />
+        <StatCard icon={ShieldAlert} label="Active Strikes" value={activeStrikeCount} tone="warning" note="Live active strikes across tracked members." />
+        <StatCard icon={Trophy} label="Weekly Activity" value={`${weeklyScore} pts`} note={`You are ranked #${myRank} this week.`} />
+        <StatCard icon={Users2} label="Members Tracked" value={trackedMembers} tone="success" note="Current guild roster loaded into the dashboard." />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="surface-highlight">
+          <CardContent className="p-6 sm:p-7">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-[var(--primary-soft)] text-lg font-bold text-[var(--text-main)]">
+                  {initials(dashboard.viewer.display_name)}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-[var(--text-muted)]">My Profile</p>
+                  <h2 className="text-2xl font-semibold text-[var(--text-main)]">{dashboard.myProfile?.name || dashboard.viewer.display_name}</h2>
+                  <p className="text-sm text-[var(--text-muted)]">@{dashboard.viewer.username}</p>
+                  <RoleBadge role={dashboard.viewer.primary_role} />
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                 <p className={`text-lg font-black ${health.has_discord_credentials ? 'text-cyan-400' : 'text-rose-400'}`}>
-                    {health.has_discord_credentials ? 'VALIDATED' : 'MISSING'}
-                 </p>
-                 <p className="text-[10px] font-medium text-[var(--text-muted)]">Token authentication status</p>
+
+              <div className="rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Guild Joined</p>
+                <p className="mt-2 text-sm font-semibold text-[var(--text-main)]">
+                  {formatShortDate(dashboard.viewer.guild_joined_at, 'Unknown')}
+                </p>
               </div>
             </div>
 
-            <div className="space-y-3 p-6 rounded-3xl bg-white/[0.03] border border-white/5 transition-all hover:bg-white/[0.05]">
-              <div className="flex items-center gap-2 mb-2">
-                 <Bell className="h-4 w-4 text-amber-400" />
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Target Infrastructure</p>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <div className="surface-soft rounded-[24px] p-5">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Voice Time</p>
+                <p className="mt-3 text-2xl font-semibold text-[var(--text-main)]">{formatDuration(dashboard.myProfile?.voice_time || 0)}</p>
               </div>
-              <div className="flex flex-col gap-1">
-                 <p className="text-lg font-black text-[var(--text-main)] truncate">
-                    {config.channel_id ? `#${config.channel_id}` : 'DEFAULT'}
-                 </p>
-                 <p className="text-[10px] font-medium text-[var(--text-muted)]">Primary broadcast channel</p>
+              <div className="surface-soft rounded-[24px] p-5">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Messages</p>
+                <p className="mt-3 text-2xl font-semibold text-[var(--text-main)]">{dashboard.myProfile?.messages || 0}</p>
+              </div>
+              <div className="surface-soft rounded-[24px] p-5">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Unread Alerts</p>
+                <p className="mt-3 text-2xl font-semibold text-[var(--text-main)]">{dashboard.unreadNotifications}</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="space-y-3 p-6 rounded-3xl bg-white/[0.03] border border-white/5 transition-all hover:bg-white/[0.05]">
-              <div className="flex items-center gap-2 mb-2">
-                 <Clock className="h-4 w-4 text-indigo-400" />
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Last Intelligence Sync</p>
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Access</CardTitle>
+            <CardDescription>Open the most useful areas for your current role.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {quickActions.map((item) => (
+              <Button key={item.path} asChild variant="secondary" className="justify-between">
+                <Link to={item.path}>
+                  <span className="flex items-center gap-2">
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Leaderboard</CardTitle>
+            <CardDescription>Top weekly contributors from messages and voice activity.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {topLeaders.length ? topLeaders.map((item, index) => (
+              <div key={item.id} className="surface-soft flex items-center justify-between rounded-[24px] px-5 py-4">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text-main)]">#{index + 1} {item.name}</p>
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">
+                    {item.messages} messages / {formatDuration(item.voice_time)}
+                  </p>
+                </div>
+                <p className="text-lg font-semibold text-[var(--text-main)]">{item.score} pts</p>
               </div>
-              <div className="flex flex-col gap-1">
-                 <p className="text-lg font-black text-[var(--text-main)]">
-                    {formatDate(health.reminders_last_updated_at).split(',')[0]}
-                 </p>
-                 <p className="text-[10px] font-medium text-[var(--text-muted)]">
-                    Timed at {formatDate(health.reminders_last_updated_at).split(',')[1] || 'Unknown'}
-                 </p>
+            )) : (
+              <div className="surface-soft rounded-[24px] px-5 py-12 text-center text-sm text-[var(--text-muted)]">
+                No activity has been captured yet.
               </div>
-            </div>
-          </div>
-          
-          <div className="mt-10 flex items-center justify-between border-t border-white/5 pt-6 text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-widest">
-             <div className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                <span>All subsystems operational</span>
-             </div>
-             <span>Engine Version 2.4.0 (Stable)</span>
-          </div>
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Notifications</CardTitle>
+            <CardDescription>Your newest updates across strikes, reviews, and management actions.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentNotifications.length ? recentNotifications.map((item) => (
+              <div key={item.id} className="surface-soft rounded-[24px] p-4">
+                <div className="flex items-center gap-3">
+                  <Badge variant={item.read_at ? 'neutral' : 'default'}>
+                    {item.read_at ? 'Read' : 'Unread'}
+                  </Badge>
+                  <p className="text-sm font-semibold text-[var(--text-main)]">{item.title}</p>
+                  <span className="ml-auto text-xs text-[var(--text-muted)]">{formatDate(item.created_at)}</span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">{item.message}</p>
+              </div>
+            )) : (
+              <div className="surface-soft rounded-[24px] px-5 py-12 text-center text-sm text-[var(--text-muted)]">
+                No notifications yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {hasPermission(dashboard.viewer, 'view_events') ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming Events</CardTitle>
+            <CardDescription>Current events pulled from the live reminder system.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-3">
+            {latestEvents.length ? latestEvents.map((event) => (
+              <div key={event.id} className="surface-soft rounded-[24px] p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold text-[var(--text-main)]">{event.desc}</p>
+                    <p className="mt-2 text-sm text-[var(--text-muted)]">
+                      {event.event_date ? formatDate(event.event_date) : (event.time || 'Time not set')}
+                    </p>
+                  </div>
+                  <Badge variant={event.enabled ? 'success' : 'danger'}>
+                    {event.enabled ? 'Active' : 'Disabled'}
+                  </Badge>
+                </div>
+              </div>
+            )) : (
+              <div className="surface-soft rounded-[24px] px-5 py-12 text-center text-sm text-[var(--text-muted)] md:col-span-3">
+                No events available yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

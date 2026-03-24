@@ -100,7 +100,7 @@ async def on_ready():
                 pass
             print(f"-> Members loaded: {len(guild.members)}")
             # Notify backend
-            send_heartbeat(True)
+            await send_heartbeat_async(True)
         except Exception as e:
             print(f"-> Failed to fetch members: {e}")
     

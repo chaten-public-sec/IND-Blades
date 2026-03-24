@@ -1,220 +1,369 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import { LayoutDashboard, Calendar, MessageSquare, Users, BarChart3, ScrollText, Shield, Sun, Moon, LogOut, Bell, Menu, X, Zap, FileText, Hash } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useTheme } from './ThemeProvider';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Activity,
+  Bell,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  FileClock,
+  LayoutGrid,
+  Menu,
+  PartyPopper,
+  ScrollText,
+  Settings2,
+  Shield,
+  Users2,
+  X,
+} from 'lucide-react';
 import { DashboardContext } from '../lib/DashboardContext';
 import { useDashboard } from '../hooks/useDashboard';
-import { Badge } from './ui/badge';
+import { useTheme } from './ThemeProvider';
+import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
+import RoleBadge from './RoleBadge';
+import { hasPermission } from '../lib/access';
+import NotificationDrawer from './NotificationDrawer';
+import ProfileMenu from './ProfileMenu';
+import UserProfileDialog from './UserProfileDialog';
+import ProfileAvatar from './ProfileAvatar';
 
-const MAIN_NAV = [
-  { id: 'overview', path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'events', path: '/dashboard/events', label: 'Events', icon: Calendar },
-  { id: 'welcome', path: '/dashboard/welcome', label: 'Welcome', icon: MessageSquare },
-  { id: 'users', path: '/dashboard/users', label: 'Users', icon: Users },
-  { id: 'activity', path: '/dashboard/activity', label: 'Activity', icon: BarChart3 },
-  { id: 'strikes', path: '/dashboard/strikes', label: 'Strikes', icon: Zap },
-  { id: 'autorole', path: '/dashboard/autorole', label: 'Auto Role', icon: Shield },
-];
+function buildNavigation(viewer) {
+  const primary = [
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutGrid, show: true },
+    { path: '/dashboard/events', label: 'Events', icon: CalendarDays, show: hasPermission(viewer, 'view_events') },
+    { path: '/dashboard/activity', label: 'Activity', icon: Activity, show: hasPermission(viewer, 'view_activity') },
+    { path: '/dashboard/strikes', label: 'Strikes', icon: Shield, show: hasPermission(viewer, 'view_self_strikes') || hasPermission(viewer, 'apply_strikes') || hasPermission(viewer, 'issue_strikes') },
+    { path: '/dashboard/discord-logs', label: 'Logs', icon: ScrollText, show: hasPermission(viewer, 'view_discord_logs') },
+    { path: '/dashboard/logs', label: 'System Logs', icon: FileClock, show: hasPermission(viewer, 'view_logs') },
+    { path: '/dashboard/welcome', label: 'Welcome', icon: PartyPopper, show: hasPermission(viewer, 'view_welcome') },
+  ].filter((item) => item.show);
 
-const SYSTEM_LOGS_NAV = [
-  { id: 'system-logs', path: '/dashboard/logs', label: 'System Logs', icon: FileText },
-];
+  const secondary = [
+    { path: '/dashboard/users', label: 'Members', icon: Users2, show: hasPermission(viewer, 'view_users') || hasPermission(viewer, 'manage_web_roles') },
+    { path: '/dashboard/autorole', label: 'Settings', icon: Settings2, show: hasPermission(viewer, 'view_autorole') || hasPermission(viewer, 'configure_fam_role') },
+  ].filter((item) => item.show);
 
-const DISCORD_LOGS_NAV = [
-  { id: 'discord-logs', path: '/dashboard/discord-logs', label: 'Logs', icon: Hash },
-];
+  return { primary, secondary, all: [...primary, ...secondary] };
+}
+
+function getCurrentItem(pathname, navigation) {
+  const directMatch = navigation.all.find((item) => item.path === pathname);
+  if (directMatch) return directMatch;
+  if (pathname === '/dashboard/notifications') return { label: 'Notifications' };
+  return navigation.all[0] || { label: 'Dashboard' };
+}
+
+function NavigationGroup({ items, location, sidebarCollapsed, closeSidebar }) {
+  return (
+    <nav className="space-y-2">
+      {items.map((item) => {
+        const active = item.path === '/dashboard'
+          ? location === '/dashboard'
+          : location.startsWith(item.path);
+
+        return (
+          <Link
+            key={item.path}
+            to={item.path}
+            title={item.label}
+            onClick={closeSidebar}
+            className={`group flex items-center ${sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-4'} rounded-[22px] border py-3 text-sm font-semibold transition ${active ? 'border-[rgba(49,94,251,0.22)] bg-[var(--primary-soft)] text-[var(--text-main)] shadow-[0_18px_40px_-28px_rgba(49,94,251,0.6)]' : 'border-transparent text-[var(--text-muted)] hover:border-[var(--border)] hover:bg-[var(--bg-soft)] hover:text-[var(--text-main)]'}`}
+          >
+            <span className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
+              <item.icon className={`h-4 w-4 ${active ? 'text-[var(--primary)]' : 'text-[var(--text-muted)] group-hover:text-[var(--text-main)]'}`} />
+              {!sidebarCollapsed ? item.label : null}
+            </span>
+            {!sidebarCollapsed ? (
+              <ChevronRight className={`h-4 w-4 transition ${active ? 'translate-x-0 text-[var(--primary)]' : '-translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100'}`} />
+            ) : null}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
 
 export default function DashboardLayout() {
   const dashboard = useDashboard();
-  const { theme, toggle: toggleTheme } = useTheme();
-  const navigate = useNavigate();
+  const { theme, toggle } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [profileDialogUser, setProfileDialogUser] = useState(null);
+  const [profileDialogLoading, setProfileDialogLoading] = useState(false);
+  const handledProfileIntentRef = useRef('');
 
-  if (dashboard.loading && dashboard.events.length === 0) {
+  const navigation = useMemo(() => buildNavigation(dashboard.viewer), [dashboard.viewer]);
+  const currentItem = getCurrentItem(location.pathname, navigation);
+  const selfProfile = dashboard.selfProfile || dashboard.myProfile || dashboard.viewer;
+
+  const openProfileDialog = (user = selfProfile) => {
+    setProfileDialogLoading(false);
+    setProfileDialogUser(user || null);
+    setProfileDialogOpen(true);
+  };
+
+  useEffect(() => {
+    setSidebarOpen(false);
+    setNotificationsOpen(false);
+    setProfileOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const shouldOpenProfile = location.state?.openProfile === 'me' || params.get('profile') === 'me';
+    const intentKey = `${location.key}:${location.pathname}:${location.search}:${location.state?.openProfile || ''}`;
+
+    if (!shouldOpenProfile || !selfProfile || handledProfileIntentRef.current === intentKey) {
+      return;
+    }
+
+    handledProfileIntentRef.current = intentKey;
+    openProfileDialog(selfProfile);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.key, location.pathname, location.search, location.state, navigate, selfProfile]);
+
+  if (dashboard.loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-main)]">
-        <div className="flex flex-col items-center gap-6">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-cyan-400/20 border-t-cyan-400" />
-          <Skeleton className="h-4 w-48" />
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="surface-highlight flex w-full max-w-lg flex-col gap-5 rounded-[32px] px-6 py-8">
+          <div className="grid gap-4 sm:grid-cols-[240px_1fr]">
+            <Skeleton className="h-60 rounded-[28px]" />
+            <div className="space-y-4">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-10 w-52" />
+              <Skeleton className="h-24 rounded-[24px]" />
+              <Skeleton className="h-24 rounded-[24px]" />
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  const apiOnline = dashboard.ping >= 0;
+  if (!dashboard.viewer?.primary_role) {
+    return <Navigate to="/" replace />;
+  }
+
+  const dashboardContextValue = {
+    ...dashboard,
+    selfProfile,
+    openProfileDialog,
+    closeProfileDialog: () => setProfileDialogOpen(false),
+  };
 
   return (
-    <DashboardContext.Provider value={dashboard}>
-      <div className="flex min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] transition-colors duration-300">
-
-
-
-        {/* Mobile sidebar toggle */}
+    <DashboardContext.Provider value={dashboardContextValue}>
+      <div className="flex min-h-screen bg-[var(--bg-main)] text-[var(--text-main)]">
         <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="fixed left-4 top-4 z-[60] flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--bg-sidebar)]/90 text-[var(--text-main)] backdrop-blur-lg lg:hidden"
+          type="button"
+          onClick={() => setSidebarOpen((current) => !current)}
+          className="fixed left-4 top-4 z-[70] flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--bg-panel)]/90 backdrop-blur-lg lg:hidden"
         >
           {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         </button>
 
-        {/* Sidebar overlay mobile */}
-        {sidebarOpen && (
-          <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
-        )}
+        {sidebarOpen ? (
+          <button
+            type="button"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        ) : null}
 
-        {/* Sidebar */}
-        <aside className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-[var(--border)] bg-[var(--bg-sidebar)] transition-transform duration-300 lg:static lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          {/* Logo */}
-          <div className="flex h-16 items-center gap-3 border-b border-[var(--border)] px-6">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-teal-300 text-sm font-black text-slate-950">IB</div>
-            <span className="text-lg font-bold tracking-tight">IND Blades</span>
+        <aside className={`fixed inset-y-0 left-0 z-[60] flex ${sidebarCollapsed ? 'w-[98px]' : 'w-[286px]'} flex-col border-r border-[var(--border)] bg-[var(--bg-sidebar)]/96 px-4 pb-4 pt-5 backdrop-blur-xl transition-all duration-300 lg:static lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--primary)] to-[#8ba7ff] text-sm font-black text-white shadow-[0_18px_36px_-18px_rgba(49,94,251,0.9)]">
+                IB
+              </div>
+              {!sidebarCollapsed ? (
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.26em] text-[var(--text-muted)]">IND Blades</p>
+                  <p className="text-sm text-[var(--text-soft)]">Premium command dashboard</p>
+                </div>
+              ) : null}
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="hidden lg:inline-flex"
+              onClick={() => setSidebarCollapsed((current) => !current)}
+            >
+              <ChevronLeft className={`h-4 w-4 transition ${sidebarCollapsed ? 'rotate-180' : ''}`} />
+            </Button>
           </div>
 
-          {/* Nav */}
-          <nav className="flex-1 overflow-y-auto px-3 py-4">
-            <div className="space-y-1">
-              {MAIN_NAV.map((item) => {
-                const active = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
-                const isExactDashboard = item.path === '/dashboard' && location.pathname === '/dashboard';
-                const isActive = active || isExactDashboard;
-
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => { navigate(item.path); setSidebarOpen(false); }}
-                    className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-200 ${
-                      isActive
-                        ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.1)] border border-cyan-400/20'
-                        : 'text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-main)] border border-transparent'
-                    }`}
-                  >
-                    <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-cyan-400' : 'text-[var(--text-muted)] group-hover:text-cyan-400'}`} />
-                    {item.label}
-                  </button>
-                );
-              })}
-
-              <div className="pt-2">
-                <p className="px-4 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] opacity-50">Intelligence Logs</p>
-                {SYSTEM_LOGS_NAV.map((item) => {
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => { navigate(item.path); setSidebarOpen(false); }}
-                      className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-200 ${
-                        isActive
-                          ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-400/20'
-                          : 'text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-main)] border border-transparent'
-                      }`}
-                    >
-                      <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-cyan-400' : 'text-[var(--text-muted)] group-hover:text-cyan-400'}`} />
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="pt-4">
-                <p className="px-4 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] opacity-50">Discord Stream</p>
-                {DISCORD_LOGS_NAV.map((item) => {
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => { navigate(item.path); setSidebarOpen(false); }}
-                      className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-200 ${
-                        isActive
-                          ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-400/20'
-                          : 'text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-main)] border border-transparent'
-                      }`}
-                    >
-                      <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-cyan-400' : 'text-[var(--text-muted)] group-hover:text-cyan-400'}`} />
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="mt-6 rounded-[30px] border border-[var(--border)] bg-[var(--bg-soft)] p-4">
+            <div className={`flex ${sidebarCollapsed ? 'justify-center' : 'items-center gap-3'}`}>
+              <ProfileAvatar
+                name={selfProfile?.name || dashboard.viewer.display_name}
+                avatarUrl={selfProfile?.avatar_url || dashboard.viewer.avatar_url}
+                size="md"
+                className="rounded-[18px]"
+              />
+              {!sidebarCollapsed ? (
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[var(--text-main)]">{dashboard.viewer.display_name}</p>
+                  <div className="mt-2">
+                    <RoleBadge role={dashboard.viewer.primary_role} />
+                  </div>
+                </div>
+              ) : null}
             </div>
-          </nav>
+          </div>
 
-          <div className="border-t border-[var(--border)] px-4 py-4 space-y-2">
-            <div className={`flex items-center gap-3 rounded-2xl border px-3 py-1.5 transition-all duration-500 ${apiOnline ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-rose-500/20 bg-rose-500/5'}`}>
-              <div className="relative flex h-2 w-2">
-                <div className={`absolute h-full w-full animate-ping rounded-full opacity-75 ${apiOnline ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-                <div className={`relative h-2 w-2 rounded-full ${apiOnline ? 'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]' : 'bg-rose-400 shadow-[0_0_12px_rgba(251,113,133,0.8)]'}`} />
-              </div>
-              <span className={`text-[10px] font-black uppercase tracking-widest ${apiOnline ? 'text-emerald-400' : 'text-rose-400'}`}>
-                API: {apiOnline ? 'Linked' : 'Offline'}
-              </span>
-            </div>
+          <div className="mt-6 flex-1 overflow-y-auto pr-1">
+            <NavigationGroup
+              items={navigation.primary}
+              location={location.pathname}
+              sidebarCollapsed={sidebarCollapsed}
+              closeSidebar={() => setSidebarOpen(false)}
+            />
 
-            <div className={`flex items-center gap-3 rounded-2xl border px-3 py-1.5 transition-all duration-500 ${dashboard.botStatus === 'connected' ? 'border-cyan-500/20 bg-cyan-500/5' : 'border-rose-500/20 bg-rose-500/5'}`}>
-              <div className="relative flex h-2 w-2">
-                <div className={`absolute h-full w-full animate-ping rounded-full opacity-75 ${dashboard.botStatus === 'connected' ? 'bg-cyan-400' : 'bg-rose-400'}`} />
-                <div className={`relative h-2 w-2 rounded-full ${dashboard.botStatus === 'connected' ? 'bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.8)]' : 'bg-rose-400 shadow-[0_0_12px_rgba(251,113,133,0.8)]'}`} />
+            {navigation.secondary.length ? (
+              <div className="mt-6">
+                {!sidebarCollapsed ? (
+                  <p className="mb-3 px-3 text-[11px] font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                    Management
+                  </p>
+                ) : null}
+                <NavigationGroup
+                  items={navigation.secondary}
+                  location={location.pathname}
+                  sidebarCollapsed={sidebarCollapsed}
+                  closeSidebar={() => setSidebarOpen(false)}
+                />
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-widest ${dashboard.botStatus === 'connected' ? 'text-cyan-400' : 'text-rose-400'}`}>
-                Bot: {dashboard.botStatus === 'connected' ? 'Active' : 'Offline'}
-              </span>
+            ) : null}
+          </div>
+
+          <div className="space-y-3 border-t border-[var(--border)] pt-4">
+            <div className={`rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-4 ${sidebarCollapsed ? 'text-center' : ''}`}>
+              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">Bot Status</p>
+              <div className={`mt-3 flex items-center gap-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+                <span className={`h-2.5 w-2.5 rounded-full ${dashboard.botStatus === 'connected' ? 'bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.7)]' : 'bg-rose-400 shadow-[0_0_18px_rgba(251,113,133,0.6)]'}`} />
+                {!sidebarCollapsed ? (
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--text-main)]">{dashboard.botStatus === 'connected' ? 'Online' : 'Offline'}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{dashboard.liveSync ? 'Live updates active' : 'Waiting for live sync'}</p>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </aside>
 
-        {/* Main area */}
-        <div className="flex flex-1 flex-col min-w-0">
-          {/* Top navbar */}
-          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[var(--border)] bg-[var(--bg-main)]/80 px-4 backdrop-blur-xl sm:px-8">
-            <div className="pl-12 lg:pl-0">
-              <h1 className="text-lg font-bold tracking-tight">IND Blades</h1>
-            </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-40 px-4 pb-4 pt-4 sm:px-6 lg:px-8">
+            <div className="app-shell rounded-[30px] px-4 py-4 sm:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="pl-12 lg:pl-0">
+                  <p className="text-xs font-black uppercase tracking-[0.28em] text-[var(--text-muted)]">{currentItem.label}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <h1 className="text-2xl font-semibold text-[var(--text-main)] sm:text-[2rem]">{dashboard.viewer.display_name}</h1>
+                    <RoleBadge role={dashboard.viewer.primary_role} />
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--text-muted)]">
+                    {dashboard.liveSync ? 'Live updates are on across your dashboard.' : 'You are viewing the latest synced data.'}
+                  </p>
+                </div>
 
-            <div className="flex items-center gap-2">
-              {dashboard.liveSync && (
-                <Badge variant="success" className="hidden sm:inline-flex">Live</Badge>
-              )}
+                <div className="flex items-center gap-3">
+                  <div className="hidden items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2 text-xs font-semibold text-[var(--text-soft)] md:flex">
+                    <span className={`h-2.5 w-2.5 rounded-full ${dashboard.botStatus === 'connected' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                    Bot {dashboard.botStatus === 'connected' ? 'Online' : 'Offline'}
+                  </div>
 
-              <button
-                onClick={toggleTheme}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-white/5 text-[var(--text-muted)] transition hover:bg-white/10 hover:text-[var(--text-main)]"
-                title="Toggle theme"
-              >
-                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="relative"
+                    onClick={() => {
+                      setNotificationsOpen((current) => !current);
+                      setProfileOpen(false);
+                    }}
+                    title="Notifications"
+                  >
+                    <Bell className="h-4 w-4" />
+                    {dashboard.unreadNotifications ? (
+                      <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[var(--primary)] shadow-[0_0_0_4px_rgba(49,94,251,0.18)]" />
+                    ) : null}
+                  </Button>
 
-              <button
-                onClick={() => navigate('/dashboard/notifications')}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-white/5 text-[var(--text-muted)] transition hover:bg-white/10 hover:text-[var(--text-main)]"
-                title="Notifications"
-              >
-                <Bell className="h-4 w-4" />
-              </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileOpen((current) => !current);
+                        setNotificationsOpen(false);
+                      }}
+                      className="flex h-11 items-center gap-3 rounded-full border border-[var(--border)] bg-[var(--bg-soft)] px-2.5 pr-3 transition hover:border-[var(--border-strong)]"
+                    >
+                      <ProfileAvatar
+                        name={selfProfile?.name || dashboard.viewer.display_name}
+                        avatarUrl={selfProfile?.avatar_url || dashboard.viewer.avatar_url}
+                        size="sm"
+                        className="rounded-full"
+                      />
+                      <span className="hidden text-sm font-semibold text-[var(--text-main)] sm:block">
+                        {dashboard.viewer.display_name}
+                      </span>
+                    </button>
 
-              <button
-                onClick={dashboard.logout}
-                className="inline-flex h-10 items-center gap-2 rounded-2xl border border-[var(--border)] bg-white/5 px-4 text-sm font-medium text-[var(--text-muted)] transition hover:border-rose-400/30 hover:bg-rose-400/10 hover:text-rose-200"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
+                    <ProfileMenu
+                      open={profileOpen}
+                      onClose={() => setProfileOpen(false)}
+                      onMyProfile={() => openProfileDialog(selfProfile)}
+                      dashboard={dashboard}
+                      theme={theme}
+                      toggleTheme={toggle}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </header>
 
-          {/* Error banner */}
-          {dashboard.errorMessage && (
-            <div className="mx-4 mt-4 rounded-2xl border border-rose-300/20 bg-rose-300/8 px-5 py-3 text-sm font-medium text-rose-100 sm:mx-8">
-              {dashboard.errorMessage}
-            </div>
-          )}
-
-          {/* Page content */}
-          <main className="flex-1 p-4 sm:p-8">
+          <main className="flex-1 px-4 pb-8 sm:px-6 lg:px-8">
+            {dashboard.errorMessage ? (
+              <div className="mb-6 rounded-[24px] border border-rose-400/25 bg-rose-500/10 px-5 py-4 text-sm font-medium text-rose-200">
+                {dashboard.errorMessage}
+              </div>
+            ) : null}
             <Outlet />
           </main>
         </div>
+
+        <NotificationDrawer
+          open={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
+          dashboard={dashboard}
+        />
+
+        <UserProfileDialog
+          open={profileDialogOpen}
+          onOpenChange={(open) => {
+            setProfileDialogOpen(open);
+            if (!open) {
+              setProfileDialogLoading(false);
+            }
+          }}
+          user={profileDialogUser}
+          loading={profileDialogLoading}
+          roles={dashboard.roles}
+          roster={dashboard.roster}
+          leaderboard={dashboard.leaderboard}
+          title={profileDialogUser && String(profileDialogUser.id) === String(selfProfile?.id) ? 'My Profile' : 'User Profile'}
+          description="Profile summary, activity, strike history, and roles."
+        />
       </div>
     </DashboardContext.Provider>
   );

@@ -1,146 +1,85 @@
 [
   {
-    "id": "733d8c15-6919-4358-a774-322e6329f74e",
-    "message": "Dashboard session closed.",
-    "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-23T17:15:11.079Z"
-  },
-  {
-    "id": "b48d5ba6-fee1-414d-9257-1ec5e3adff88",
-    "message": "Removed strike from user 1477371037120200724.",
-    "level": "info",
-    "source": "strikes",
-    "meta": {
-      "user_id": "1477371037120200724"
-    },
-    "timestamp": "2026-03-23T17:14:59.361Z"
-  },
-  {
-    "id": "354c9bdc-44dd-420e-b0aa-e142b67ab9a7",
-    "message": "Added strike to user 1477371037120200724.",
-    "level": "warning",
-    "source": "strikes",
-    "meta": {
-      "user_id": "1477371037120200724"
-    },
-    "timestamp": "2026-03-23T17:14:47.380Z"
-  },
-  {
-    "id": "6dbc600f-7bfe-451d-bf0c-37a5c6e68578",
-    "message": "Updated notification settings.",
-    "level": "info",
-    "source": "notifications",
-    "meta": {},
-    "timestamp": "2026-03-23T17:14:17.628Z"
-  },
-  {
-    "id": "aedc838c-ff28-4d56-b961-b3c112e2cada",
+    "id": "625baa03-77ab-47ec-b96d-ac97f4367dc9",
     "message": "Updated Discord log settings.",
     "level": "info",
-    "source": "settings",
+    "source": "discord_logs",
     "meta": {},
-    "timestamp": "2026-03-23T17:12:57.958Z"
+    "timestamp": "2026-03-24T14:34:06.337Z"
   },
   {
-    "id": "1846f359-17d9-4ca5-a22a-2ca05d8be3b4",
-    "message": "Updated Discord log settings.",
+    "id": "fd7d490d-f470-4e2c-9cca-8eff89916c85",
+    "message": "Created event \"Test\".",
     "level": "info",
-    "source": "settings",
-    "meta": {},
-    "timestamp": "2026-03-23T17:12:54.557Z"
-  },
-  {
-    "id": "cdbd37ad-d13f-4a8a-859e-5329dbb029f0",
-    "message": "Removed strike from user 1477371037120200724.",
-    "level": "info",
-    "source": "strikes",
+    "source": "events",
     "meta": {
-      "user_id": "1477371037120200724"
+      "id": "e39ad895-616f-4196-bab9-59518615a97a"
     },
-    "timestamp": "2026-03-23T17:12:33.029Z"
+    "timestamp": "2026-03-24T14:24:34.749Z"
   },
   {
-    "id": "325f7f65-28c0-47fe-a42e-ec9492ba6400",
-    "message": "Added strike to user 1477371037120200724.",
-    "level": "warning",
-    "source": "strikes",
+    "id": "3178f717-e70f-4efc-8fdc-a63e7e80d9b9",
+    "message": "Queued welcome preview.",
+    "level": "info",
+    "source": "welcome",
     "meta": {
-      "user_id": "1477371037120200724"
+      "channel_id": "1478106773595357185"
     },
-    "timestamp": "2026-03-23T17:12:18.149Z"
+    "timestamp": "2026-03-24T14:23:52.396Z"
   },
   {
-    "id": "6d94d979-f2ea-4dbf-9431-8d1ae20aba95",
-    "message": "Dashboard login successful.",
+    "id": "5a4de9a4-91d5-4e8d-b3eb-6622615818a1",
+    "message": "Updated server log routing.",
     "level": "info",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-23T17:11:33.520Z"
+    "source": "logs",
+    "meta": {
+      "enabled": true,
+      "moderation_channel_id": "1478106773595357185",
+      "event_channel_id": "1478106738359144498",
+      "system_channel_id": "1478106738359144498"
+    },
+    "timestamp": "2026-03-24T14:23:45.504Z"
   },
   {
-    "id": "81f1d0b8-3abc-453e-968f-067d53fa007e",
-    "message": "Failed dashboard login attempt.",
-    "level": "warning",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-23T17:11:28.118Z"
-  },
-  {
-    "id": "6387323a-902d-4667-a168-7b6a187e6037",
-    "message": "Failed dashboard login attempt.",
-    "level": "warning",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-23T17:11:22.585Z"
-  },
-  {
-    "id": "daf498fd-914b-49f2-b5ca-77ee07597690",
-    "message": "Failed dashboard login attempt.",
-    "level": "warning",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-23T17:11:17.329Z"
-  },
-  {
-    "id": "5ab484b6-3b0c-4850-ab13-9ab121d02b8c",
-    "message": "API server listening on port 3001.",
+    "id": "d26f88a8-cc75-497b-a4d7-8f6ed6f27b18",
+    "message": "Queued welcome preview.",
     "level": "info",
-    "source": "server",
-    "meta": {},
-    "timestamp": "2026-03-23T17:10:52.334Z"
+    "source": "welcome",
+    "meta": {
+      "channel_id": "1478106773595357185"
+    },
+    "timestamp": "2026-03-24T14:23:30.335Z"
   },
   {
-    "id": "584edb15-4c3f-47ee-a797-c3e25874431d",
-    "message": "Bot exited with code 1. Re-spawning in 30s...",
-    "level": "error",
-    "source": "bot",
-    "meta": {},
-    "timestamp": "2026-03-23T17:05:15.812Z"
-  },
-  {
-    "id": "f7fc302c-8626-41f1-9e30-04291592286d",
-    "message": "Failed dashboard login attempt.",
-    "level": "warning",
-    "source": "auth",
-    "meta": {},
-    "timestamp": "2026-03-23T17:04:38.003Z"
-  },
-  {
-    "id": "2ff1fa98-0752-4510-af13-4f639ffff882",
-    "message": "API server listening on port 3001.",
+    "id": "39b992d8-a5dc-43ba-b2e7-67991a5196c2",
+    "message": "Updated auto role settings.",
     "level": "info",
-    "source": "server",
+    "source": "autorole",
     "meta": {},
-    "timestamp": "2026-03-23T17:04:18.960Z"
+    "timestamp": "2026-03-24T14:23:22.770Z"
   },
   {
-    "id": "f04633a1-c3ff-469e-b77f-a79b2a4c0f3b",
-    "message": "Logs cleared successfully.",
+    "id": "1e2f6e2d-b732-4960-a754-338cdb29962f",
+    "message": "Updated management settings.",
     "level": "info",
-    "source": "system",
+    "source": "management",
     "meta": {},
-    "timestamp": "2026-03-23T17:04:04.092Z"
+    "timestamp": "2026-03-24T14:23:22.750Z"
+  },
+  {
+    "id": "70e8cf9f-11b4-4168-b6e5-122ca1df2131",
+    "message": "Updated auto role settings.",
+    "level": "info",
+    "source": "autorole",
+    "meta": {},
+    "timestamp": "2026-03-24T14:23:08.972Z"
+  },
+  {
+    "id": "aba439e3-bc02-4d8f-ada7-49d4c4d85e58",
+    "message": "Updated management settings.",
+    "level": "info",
+    "source": "management",
+    "meta": {},
+    "timestamp": "2026-03-24T14:23:07.668Z"
   }
 ]

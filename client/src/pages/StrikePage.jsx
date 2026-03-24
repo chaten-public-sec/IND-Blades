@@ -1,500 +1,571 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useState } from 'react';
+import { CheckCircle2, Gavel, ShieldAlert, ShieldCheck, Undo2 } from 'lucide-react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
-import { Card, CardContent } from '../components/ui/card';
+import { hasPermission } from '../lib/access';
+import { formatDate } from '../lib/format';
+import SectionHeader from '../components/SectionHeader';
+import SearchPickerDialog from '../components/SearchPickerDialog';
 import { Button } from '../components/ui/button';
-import { SelectField } from '../components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '../components/ui/dialog';
-import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/table';
-import { Label } from '../components/ui/label';
-import { Gavel, Shield, AlertTriangle, Users, Search, Trash2, History, Clock, MapPin, Calendar, ExternalLink } from 'lucide-react';
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '../components/ui/table';
 
-function formatDate(v) {
-  if (!v) return 'N/A';
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? 'N/A' : d.toLocaleString();
+function parseProofLinks(value) {
+  return String(value || '')
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
-function getTimeLeft(expiresAt) {
-  if (!expiresAt) return '—';
-  const diff = new Date(expiresAt) - new Date();
-  if (diff <= 0) return 'Expired';
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  if (days > 0) return `${days}d ${hours}h`;
-  return `${hours}h ${mins}m`;
+function userItems(users) {
+  return users.map((item) => ({
+    id: item.id,
+    label: item.name,
+    description: item.username ? `@${item.username}` : `User ID ${item.id}`,
+  }));
 }
 
-const PAGE_SIZE = 15;
-
-export default function StrikePage() {
-  const { roster, roles, strikeConfig, setStrikeConfig, showToast, handleError } = useDashboardContext();
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(0);
-
-  // Add Strike Dialog
-  const [addOpen, setAddOpen] = useState(false);
-  const [addUserId, setAddUserId] = useState('');
-  const [addReason, setAddReason] = useState('');
-  const [addErrors, setAddErrors] = useState({});
-  const [addSaving, setAddSaving] = useState(false);
-
-  // Remove Strike Confirmation
-  const [removeOpen, setRemoveOpen] = useState(false);
-  const [removeTarget, setRemoveTarget] = useState(null); 
-  const [removeSaving, setRemoveSaving] = useState(false);
-
-  // User Detail Dialog
-  const [detailUser, setDetailUser] = useState(null);
-
-  const [expiryDays, setExpiryDays] = useState(strikeConfig.expiry_days ?? 7);
-  const [strikeMapping, setStrikeMapping] = useState(strikeConfig.strike_mapping ?? {});
-  const [configSaving, setConfigSaving] = useState(false);
-
-  useEffect(() => {
-    setExpiryDays(strikeConfig.expiry_days ?? 7);
-    setStrikeMapping(strikeConfig.strike_mapping ?? {});
-  }, [strikeConfig]);
-
-  const updateStrikeMapping = (count, roleId) => setStrikeMapping((p) => ({ ...p, [count]: roleId }));
-
-  const saveConfig = async () => {
-    setConfigSaving(true);
-    try {
-      const r = await api.post('/api/strikes/config', {
-        expiry_days: Number(expiryDays),
-        strike_mapping: strikeMapping,
-      });
-      setStrikeConfig(r.data?.config || strikeConfig);
-      showToast('success', 'Strike configuration saved', 'strike-config');
-    } catch (err) { handleError(err, 'Failed to save configuration'); }
-    finally { setConfigSaving(false); }
-  };
-
-  const usersWithStrikes = useMemo(() => {
-    return roster
-      .filter(u => (u.strike_count || 0) > 0 || (u.strikes && u.strikes.length > 0))
-      .sort((a, b) => (b.strike_count || 0) - (a.strike_count || 0));
-  }, [roster]);
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return usersWithStrikes;
-    const q = search.toLowerCase();
-    return usersWithStrikes.filter(u =>
-      `${u.name || ''} ${u.username || ''} ${u.id}`.toLowerCase().includes(q)
-    );
-  }, [usersWithStrikes, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages - 1);
-  const pageItems = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
-
-  const validateStrike = () => {
-    const e = {};
-    if (!addUserId) e.user = 'Select a recipient';
-    if (!addReason.trim()) e.reason = 'Mention the violation reason';
-    setAddErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const addStrike = useCallback(async () => {
-    if (!validateStrike()) return;
-    setAddSaving(true);
-    try {
-      await api.post('/api/strikes/add', { user_id: addUserId, reason: addReason.trim() });
-      showToast('success', 'Strike issued successfully', 'strike-add');
-      setAddOpen(false);
-      setAddUserId('');
-      setAddReason('');
-    } catch (err) { handleError(err, 'Failed to issue strike.'); }
-    finally { setAddSaving(false); }
-  }, [addUserId, addReason, showToast, handleError]);
-
-  const confirmRemove = useCallback(async () => {
-    if (!removeTarget) return;
-    setRemoveSaving(true);
-    try {
-      await api.post('/api/strikes/remove', { user_id: removeTarget.userId, index: removeTarget.index });
-      showToast('success', 'Strike removed successfully', 'strike-remove');
-      setRemoveOpen(false);
-      setRemoveTarget(null);
-      if (detailUser && detailUser.id === removeTarget.userId) {
-        const updated = roster.find(u => u.id === removeTarget.userId);
-        if (updated) setDetailUser(updated);
-      }
-    } catch (err) { handleError(err, 'Failed to remove strike.'); }
-    finally { setRemoveSaving(false); }
-  }, [removeTarget, showToast, handleError, detailUser, roster]);
-
-  const openRemoveDialog = (userId, index, reason) => {
-    setRemoveTarget({ userId, index, reason });
-    setRemoveOpen(true);
-  };
-
-  const getUserName = (id) => {
-    const u = roster.find(r => r.id === id);
-    return u ? (u.name || u.username || `User ${id.slice(-4)}`) : `User ${id.slice(-4)}`;
-  };
-
-  const currentDetailUser = detailUser ? roster.find(u => u.id === detailUser.id) || detailUser : null;
-  const userRoleIds = new Set(currentDetailUser?.roles || []);
-  const userRoles = roles.filter(r => userRoleIds.has(r.id));
-
+function MetricCard({ label, value, note }) {
   return (
-    <div className="space-y-6 animate-[fadeIn_0.3s_ease]">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">Strike Management</h2>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
-            {usersWithStrikes.length} user{usersWithStrikes.length !== 1 ? 's' : ''} with active strikes
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-             <input
-               placeholder="Filter by name or ID..."
-               value={search}
-               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-               className="surface-soft h-11 w-full rounded-2xl pl-10 pr-4 text-sm text-[var(--text-main)] transition focus:border-cyan-300/30 sm:w-64"
-             />
-             <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-[var(--text-muted)]" />
-          </div>
-          <Button onClick={() => setAddOpen(true)} className="gap-2 shadow-lg shadow-red-500/10">
-             <Gavel className="h-4 w-4" />
-             Issue Strike
-          </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-8 lg:flex-row">
-            <div className="space-y-4 lg:w-1/3">
-              <div className="flex items-center gap-2">
-                 <Clock className="h-4 w-4 text-cyan-400" />
-                 <h3 className="font-semibold text-[var(--text-main)]">Strike Expiry</h3>
-              </div>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                Configure how long a strike remains active before it is automatically forgiven.
-              </p>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min="1"
-                  value={expiryDays}
-                  onChange={(e) => setExpiryDays(Number(e.target.value))}
-                  className="surface-soft h-11 w-24 rounded-2xl px-4 text-sm text-[var(--text-main)] focus:border-cyan-300/30 transition-all font-mono"
-                />
-                <span className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-widest">Days</span>
-              </div>
-            </div>
-
-            <div className="hidden lg:block w-px bg-white/5 self-stretch" />
-
-            <div className="flex-1 space-y-4">
-              <div className="flex items-center justify-between">
-                 <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-rose-400" />
-                    <h3 className="font-semibold text-[var(--text-main)]">Role Mapping Escalation</h3>
-                 </div>
-                 <Button onClick={saveConfig} loading={configSaving} size="sm" className="h-8">Save Changes</Button>
-              </div>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                Automatically assign restrictive roles based on strike counts. Roles stack as strikes increase.
-              </p>
-              <div className="grid gap-4 sm:grid-cols-3">
-                {[1, 2, 3].map((count) => (
-                  <div key={count} className="space-y-2 rounded-2xl bg-white/3 border border-white/5 p-3">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
-                       {count} Strike{count > 1 ? 's' : ''} Target
-                    </Label>
-                    <SelectField value={strikeMapping[count] || ''} onChange={(e) => updateStrikeMapping(count, e.target.value)}>
-                      <option value="">No Role</option>
-                      {roles.map((r) => (
-                        <option key={r.id} value={r.id}>@{r.name}</option>
-                      ))}
-                    </SelectField>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="overflow-hidden border-rose-500/20 shadow-lg shadow-red-500/5">
-          <CardContent className="pt-6 text-center">
-            <div className="flex justify-center mb-2"><Users className="h-5 w-5 text-rose-400 opacity-50" /></div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Flagged Users</p>
-            <p className="mt-1 text-4xl font-black text-rose-500">{usersWithStrikes.length}</p>
-          </CardContent>
-        </Card>
-        <Card className="overflow-hidden border-amber-500/20 shadow-lg shadow-amber-500/5">
-          <CardContent className="pt-6 text-center">
-            <div className="flex justify-center mb-2"><Gavel className="h-5 w-5 text-amber-400 opacity-50" /></div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Active Strikes</p>
-            <p className="mt-1 text-4xl font-black text-amber-500">
-               {usersWithStrikes.reduce((sum, u) => sum + (u.strike_count || 0), 0)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="overflow-hidden border-cyan-500/20 shadow-lg shadow-cyan-500/5">
-          <CardContent className="pt-6 text-center">
-            <div className="flex justify-center mb-2"><MapPin className="h-5 w-5 text-cyan-400 opacity-50" /></div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Total Reach</p>
-            <p className="mt-1 text-4xl font-black text-cyan-100">{roster.length}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell>Member</TableHeaderCell>
-                <TableHeaderCell>Strikes</TableHeaderCell>
-                <TableHeaderCell>Last Reason</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {pageItems.map(user => {
-                const lastStrike = user.strikes && user.strikes.length > 0 ? user.strikes[user.strikes.length - 1] : null;
-                return (
-                  <TableRow key={user.id} className="cursor-pointer group" onClick={() => setDetailUser(user)}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800 text-sm font-bold border border-white/5 overflow-hidden">
-                           {(user.name || user.username || 'U').charAt(0).toUpperCase()}
-                           <div className="absolute inset-0 bg-gradient-to-br from-red-500/20 to-transparent" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-[var(--text-main)] group-hover:text-cyan-400 transition-colors">{user.name || user.username}</p>
-                          <p className="text-[10px] font-mono text-[var(--text-muted)]">{user.id}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={user.strike_count >= 3 ? 'danger' : user.strike_count >= 2 ? 'warning' : 'default'} className="px-3 shrink-0">
-                        {user.strike_count || 0}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm max-w-[200px] truncate font-medium text-[var(--text-muted)]">
-                       {lastStrike?.reason || '—'}
-                    </TableCell>
-                    <TableCell>
-                       <div className="flex flex-col gap-0.5">
-                          <span className={`text-[11px] font-bold ${getTimeLeft(lastStrike?.expires_at) === 'Expired' ? 'text-red-400' : 'text-emerald-400'}`}>
-                             {lastStrike ? getTimeLeft(lastStrike.expires_at) : '—'}
-                          </span>
-                          <span className="text-[10px] text-[var(--text-muted)]">Until Forgiveness</span>
-                       </div>
-                    </TableCell>
-                    <TableCell className="text-right" onClick={e => e.stopPropagation()}>
-                      <div className="flex justify-end gap-2 text-[var(--text-main)]">
-                         <Button size="sm" variant="ghost" onClick={() => setDetailUser(user)} className="h-8 w-8 p-0">
-                           <ExternalLink className="h-4 w-4" />
-                         </Button>
-                         <Button
-                           size="sm"
-                           variant="danger"
-                           className="h-8 gap-1.5 px-3 text-[10px] font-bold uppercase tracking-wider opacity-100"
-                           onClick={() => {
-                             if (user.strikes?.length > 0) {
-                               openRemoveDialog(user.id, user.strikes.length - 1, user.strikes[user.strikes.length - 1].reason);
-                             }
-                           }}
-                           disabled={!user.strikes || user.strikes.length === 0}
-                         >
-                           <Trash2 className="h-3.5 w-3.5" />
-                           Remove Strike
-                         </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {pageItems.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center text-[var(--text-muted)]">
-                    {search ? 'No matching users with strikes.' : 'No users with active strikes.'}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4">
-          <Button size="sm" variant="ghost" disabled={currentPage === 0} onClick={() => setPage(p => p - 1)}>← Prev</Button>
-          <span className="text-sm text-[var(--text-muted)] font-medium">Page {currentPage + 1} of {totalPages}</span>
-          <Button size="sm" variant="ghost" disabled={currentPage >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next →</Button>
-        </div>
-      )}
-
-      {/* Issuance Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Issue Strike</DialogTitle>
-            <DialogDescription>Apply a strike record to a server member.</DialogDescription>
-          </DialogHeader>
-          <DialogBody>
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <Label className={`text-[10px] font-bold uppercase tracking-widest ${addErrors.user ? 'text-red-400' : 'text-[var(--text-muted)]'}`}>Target Member</Label>
-                <div className="relative">
-                   <select
-                     value={addUserId}
-                     onChange={(e) => { setAddUserId(e.target.value); setAddErrors(p => ({ ...p, user: '' })); }}
-                     className={`surface-soft h-12 w-full rounded-2xl pl-11 pr-4 text-sm text-[var(--text-main)] appearance-none outline-none transition-all ${addErrors.user ? 'border-red-500/50 bg-red-500/5' : 'focus:border-cyan-500/30'}`}
-                   >
-                     <option value="" disabled>Search or select member...</option>
-                     {roster.map(u => (
-                       <option key={u.id} value={u.id}>
-                         {u.name || u.username} {u.strike_count ? `(${u.strike_count} active)` : ''}
-                       </option>
-                     ))}
-                   </select>
-                   <Users className={`absolute left-4 top-3.5 h-5 w-5 ${addErrors.user ? 'text-red-400' : 'text-[var(--text-muted)]'}`} />
-                </div>
-                {addErrors.user && <p className="text-[10px] font-medium text-red-400">{addErrors.user}</p>}
-              </div>
-              
-              <div className="space-y-2">
-                <Label className={`text-[10px] font-bold uppercase tracking-widest ${addErrors.reason ? 'text-red-400' : 'text-[var(--text-muted)]'}`}>Violation Reason</Label>
-                <div className="relative">
-                  <input
-                    value={addReason}
-                    onChange={(e) => { setAddReason(e.target.value); setAddErrors(p => ({ ...p, reason: '' })); }}
-                    placeholder="Describe the incident (e.g. Missed Event)"
-                    className={`surface-soft h-12 w-full rounded-2xl pl-11 pr-4 text-sm text-[var(--text-main)] transition-all outline-none ${addErrors.reason ? 'border-red-500/50 bg-red-500/5' : 'focus:border-cyan-500/30'}`}
-                  />
-                  <AlertTriangle className={`absolute left-4 top-3.5 h-5 w-5 ${addErrors.reason ? 'text-red-400' : 'text-[var(--text-muted)]'}`} />
-                </div>
-                {addErrors.reason && <p className="text-[10px] font-medium text-red-400">{addErrors.reason}</p>}
-              </div>
-            </div>
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button onClick={addStrike} loading={addSaving}>Confirm Issue</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Remove Confirmation */}
-      <Dialog open={removeOpen} onOpenChange={setRemoveOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Revoke Strike</DialogTitle>
-            <DialogDescription>This will remove the strike record from the member.</DialogDescription>
-          </DialogHeader>
-          <DialogBody>
-            {removeTarget && (
-              <div className="surface-soft rounded-xl p-4 border border-dashed border-red-500/20 bg-red-500/5">
-                <p className="text-sm font-semibold text-red-200">User: {getUserName(removeTarget.userId)}</p>
-                <p className="text-sm mt-1 text-[var(--text-muted)] italic">Reason: {removeTarget.reason}</p>
-              </div>
-            )}
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => { setRemoveOpen(false); setRemoveTarget(null); }}>Cancel</Button>
-            <Button variant="danger" onClick={confirmRemove} loading={removeSaving}>Revoke Strike</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Detail Dialog */}
-      <Dialog open={Boolean(currentDetailUser)} onOpenChange={(open) => { if (!open) setDetailUser(null); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-          <DialogHeader>
-            <DialogTitle>Member Strike History</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            {currentDetailUser && (
-              <div className="space-y-8">
-                <div className="flex items-center gap-5">
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-500/20 to-amber-500/20 text-3xl font-bold border border-white/10 shadow-xl">
-                    {(currentDetailUser.name || currentDetailUser.username || 'U').charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-xl font-black text-[var(--text-main)] truncate">{currentDetailUser.name || currentDetailUser.username}</h3>
-                    <p className="text-xs font-mono text-[var(--text-muted)] truncate">{currentDetailUser.id}</p>
-                    <div className="mt-2 flex gap-2">
-                       {userRoles.slice(0, 3).map(r => <Badge key={r.id} variant="default" className="text-[10px]">{r.name}</Badge>)}
-                       {userRoles.length > 3 && <Badge variant="secondary" className="text-[10px]">+{userRoles.length - 3}</Badge>}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-red-400">Total</p>
-                    <p className="text-4xl font-black text-red-500">{currentDetailUser.strike_count || 0}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-2">
-                     <History className="h-4 w-4 text-cyan-400" />
-                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Historical Incidents</h4>
-                  </div>
-                  <div className="space-y-4">
-                    {(currentDetailUser.strikes || []).map((strike, i) => (
-                      <div key={i} className="group relative overflow-hidden rounded-2xl border border-white/5 bg-white/3 p-5 transition-all hover:bg-white/5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-4 flex-1">
-                            <div>
-                               <p className="font-bold text-rose-500 text-lg leading-tight">{strike.reason}</p>
-                               <div className="mt-2 flex items-center gap-3 text-[10px] font-medium text-[var(--text-muted)] bg-white/5 w-fit px-2 py-1 rounded-md">
-                                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3 " /> {formatDate(strike.timestamp).split(',')[0]}</span>
-                                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatDate(strike.timestamp).split(',')[1]}</span>
-                               </div>
-                            </div>
-                            
-                            <div className="space-y-2">
-                               <div className="flex items-center justify-between">
-                                  <Label className="text-[9px] font-bold uppercase tracking-widest opacity-50">Forgiveness Timeline</Label>
-                                  <span className={`text-[10px] font-bold ${getTimeLeft(strike.expires_at) === 'Expired' ? 'text-red-400' : 'text-emerald-400'}`}>
-                                     {getTimeLeft(strike.expires_at)}
-                                  </span>
-                               </div>
-                               <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
-                                  <div className={`h-full rounded-full transition-all duration-1000 ${getTimeLeft(strike.expires_at) === 'Expired' ? 'bg-red-500 w-full' : 'bg-emerald-500 w-2/3 animate-pulse'}`} />
-                               </div>
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            className="h-9 gap-2 px-4 text-[10px] font-bold uppercase tracking-widest opacity-100"
-                            onClick={() => openRemoveDialog(currentDetailUser.id, i, strike.reason)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Remove Strike
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {(!currentDetailUser.strikes || currentDetailUser.strikes.length === 0) && (
-                      <div className="flex flex-col items-center justify-center py-12 opacity-50 bg-white/[0.02] rounded-3xl border-2 border-dashed border-white/10 mt-4">
-                        <Shield className="h-12 w-12 mb-3 text-emerald-500" />
-                        <p className="text-sm font-semibold tracking-wide">Excellent standing. No violations recorded.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </DialogBody>
-        </DialogContent>
-      </Dialog>
-    </div>
+    <Card>
+      <CardContent className="space-y-3 p-6">
+        <p className="text-sm font-medium text-[var(--text-muted)]">{label}</p>
+        <p className="text-3xl font-semibold text-[var(--text-main)]">{value}</p>
+        {note ? <p className="text-sm text-[var(--text-muted)]">{note}</p> : null}
+      </CardContent>
+    </Card>
   );
 }
 
+function validateStrikeForm(targets, form) {
+  const errors = {};
+
+  if (!targets.length) {
+    errors.targets = 'Select at least one member.';
+  }
+
+  if (!String(form.reason || '').trim()) {
+    errors.reason = 'Reason is required.';
+  }
+
+  return errors;
+}
+
+function FieldError({ message }) {
+  if (!message) return null;
+  return <p className="text-sm font-medium text-rose-300">{message}</p>;
+}
+
+export default function StrikePage() {
+  const dashboard = useDashboardContext();
+  const canApply = hasPermission(dashboard.viewer, 'apply_strikes');
+  const canReview = hasPermission(dashboard.viewer, 'review_strikes');
+  const canIssue = hasPermission(dashboard.viewer, 'issue_strikes');
+  const canRevoke = hasPermission(dashboard.viewer, 'revoke_strikes');
+
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [issueDialogOpen, setIssueDialogOpen] = useState(false);
+  const [requestPickerOpen, setRequestPickerOpen] = useState(false);
+  const [issuePickerOpen, setIssuePickerOpen] = useState(false);
+  const [requestTargets, setRequestTargets] = useState([]);
+  const [issueTargets, setIssueTargets] = useState([]);
+  const [requestForm, setRequestForm] = useState({ reason: '', violationTime: '', proofLinks: '', witnessText: '' });
+  const [issueForm, setIssueForm] = useState({ reason: '', violationTime: '', proofLinks: '', witnessText: '' });
+  const [requestErrors, setRequestErrors] = useState({});
+  const [issueErrors, setIssueErrors] = useState({});
+  const [requestSaving, setRequestSaving] = useState(false);
+  const [issueSaving, setIssueSaving] = useState(false);
+  const [reviewNotes, setReviewNotes] = useState({});
+  const [reviewingId, setReviewingId] = useState('');
+  const [revokingId, setRevokingId] = useState('');
+
+  const userNameMap = useMemo(() => {
+    const map = new Map();
+    dashboard.users.forEach((user) => map.set(String(user.id), user.name));
+    return map;
+  }, [dashboard.users]);
+
+  const activeStrikes = useMemo(() => (
+    dashboard.users.flatMap((user) =>
+      (user.strikes || [])
+        .filter((strike) => strike.status === 'active')
+        .map((strike) => ({
+          ...strike,
+          user_id: user.id,
+          user_name: user.name,
+          user_username: user.username,
+        }))
+    )
+  ), [dashboard.users]);
+
+  const submitRequest = async () => {
+    const errors = validateStrikeForm(requestTargets, requestForm);
+    setRequestErrors(errors);
+    if (Object.keys(errors).length) {
+      return;
+    }
+
+    setRequestSaving(true);
+    try {
+      await api.post('/api/strike-requests', {
+        target_user_ids: requestTargets,
+        reason: requestForm.reason,
+        violation_time: requestForm.violationTime || null,
+        proof_links: parseProofLinks(requestForm.proofLinks),
+        witness_text: requestForm.witnessText,
+      });
+      dashboard.showToast('success', 'Strike request submitted.', 'strike-request-submit');
+      setRequestForm({ reason: '', violationTime: '', proofLinks: '', witnessText: '' });
+      setRequestTargets([]);
+      setRequestErrors({});
+      setRequestDialogOpen(false);
+      await dashboard.loadDashboard(true);
+    } catch (error) {
+      dashboard.handleError(error, 'Unable to submit the strike request.');
+    } finally {
+      setRequestSaving(false);
+    }
+  };
+
+  const issueDirectStrike = async () => {
+    const errors = validateStrikeForm(issueTargets, issueForm);
+    setIssueErrors(errors);
+    if (Object.keys(errors).length) {
+      return;
+    }
+
+    setIssueSaving(true);
+    try {
+      await api.post('/api/strikes/add', {
+        target_user_ids: issueTargets,
+        reason: issueForm.reason,
+        violation_time: issueForm.violationTime || null,
+        proof_links: parseProofLinks(issueForm.proofLinks),
+        witness_text: issueForm.witnessText,
+      });
+      dashboard.showToast('success', 'Strike issued successfully.', 'strike-direct-issue');
+      setIssueForm({ reason: '', violationTime: '', proofLinks: '', witnessText: '' });
+      setIssueTargets([]);
+      setIssueErrors({});
+      setIssueDialogOpen(false);
+      await dashboard.loadDashboard(true);
+    } catch (error) {
+      dashboard.handleError(error, 'Unable to issue the strike.');
+    } finally {
+      setIssueSaving(false);
+    }
+  };
+
+  const reviewRequest = async (requestId, decision) => {
+    setReviewingId(requestId);
+    try {
+      await api.post(`/api/strike-requests/${requestId}/review`, {
+        decision,
+        review_note: reviewNotes[requestId] || '',
+      });
+      dashboard.showToast('success', `Strike request ${decision}d.`, `strike-review-${requestId}`);
+      await dashboard.loadDashboard(true);
+    } catch (error) {
+      dashboard.handleError(error, 'Unable to review that strike request.');
+    } finally {
+      setReviewingId('');
+    }
+  };
+
+  const revokeStrike = async (userId, strikeId) => {
+    setRevokingId(strikeId);
+    try {
+      await api.post('/api/strikes/revoke', {
+        user_id: userId,
+        strike_id: strikeId,
+        reason: 'Revoked from dashboard',
+      });
+      dashboard.showToast('success', 'Strike revoked.', `strike-revoke-${strikeId}`);
+      await dashboard.loadDashboard(true);
+    } catch (error) {
+      dashboard.handleError(error, 'Unable to revoke that strike.');
+    } finally {
+      setRevokingId('');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader
+        eyebrow="Strikes"
+        title="Strike Center"
+        description="Members can review their own strike history. High Command can apply. Deputies and above can issue, review, and revoke."
+        actions={(
+          <>
+            {canApply ? (
+              <Button variant="secondary" onClick={() => {
+                setRequestErrors({});
+                setRequestDialogOpen(true);
+              }}>
+                <ShieldAlert className="h-4 w-4" />
+                Apply for Strike
+              </Button>
+            ) : null}
+            {canIssue ? (
+              <Button onClick={() => {
+                setIssueErrors({});
+                setIssueDialogOpen(true);
+              }}>
+                <Gavel className="h-4 w-4" />
+                Add Strike
+              </Button>
+            ) : null}
+          </>
+        )}
+      />
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <MetricCard label="My Active Strikes" value={dashboard.myStrikes.filter((item) => item.status === 'active').length} note="Current live strikes on your profile." />
+        <MetricCard label="Pending Requests" value={dashboard.strikeRequests.filter((item) => item.status === 'pending').length} note="Requests waiting for a management decision." />
+        <MetricCard label="Active Across Members" value={activeStrikes.length} note="Live active strikes across the tracked roster." />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>My Strike History</CardTitle>
+          <CardDescription>Your read-only strike timeline and current status.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {dashboard.myStrikes.length ? (
+            <Table>
+              <TableHead>
+                <tr>
+                  <TableHeaderCell>Reason</TableHeaderCell>
+                  <TableHeaderCell>Given By</TableHeaderCell>
+                  <TableHeaderCell>Date</TableHeaderCell>
+                  <TableHeaderCell>Expiry</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                </tr>
+              </TableHead>
+              <TableBody>
+                {dashboard.myStrikes.map((strike) => (
+                  <TableRow key={strike.id}>
+                    <TableCell>
+                      <div className="font-semibold text-[var(--text-main)]">{strike.reason}</div>
+                      <div className="mt-1 text-sm text-[var(--text-muted)]">
+                        {strike.violation_time ? `Violation ${formatDate(strike.violation_time)}` : 'No violation time provided'}
+                      </div>
+                    </TableCell>
+                    <TableCell>{userNameMap.get(String(strike.issued_by)) || strike.issued_by || 'System'}</TableCell>
+                    <TableCell>{formatDate(strike.timestamp)}</TableCell>
+                    <TableCell>{formatDate(strike.expires_at)}</TableCell>
+                    <TableCell>
+                      <Badge variant={strike.status === 'active' ? 'danger' : strike.status === 'revoked' ? 'neutral' : 'warning'}>
+                        {strike.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="surface-soft rounded-[24px] px-5 py-12 text-center text-sm text-[var(--text-muted)]">
+              You have no recorded strikes.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {dashboard.strikeRequests.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Strike Requests</CardTitle>
+            <CardDescription>Review submissions and track their current decision status.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHead>
+                <tr>
+                  <TableHeaderCell>Requester</TableHeaderCell>
+                  <TableHeaderCell>Targets</TableHeaderCell>
+                  <TableHeaderCell>Reason</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  {canReview ? <TableHeaderCell>Review Note</TableHeaderCell> : null}
+                  {canReview ? <TableHeaderCell className="text-right">Actions</TableHeaderCell> : null}
+                </tr>
+              </TableHead>
+              <TableBody>
+                {dashboard.strikeRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell>{userNameMap.get(String(request.requester_user_id)) || request.requester_user_id}</TableCell>
+                    <TableCell>
+                      {(request.target_user_ids || []).map((id) => userNameMap.get(String(id)) || id).join(', ')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-semibold text-[var(--text-main)]">{request.reason}</div>
+                      <div className="mt-1 text-sm text-[var(--text-muted)]">
+                        {formatDate(request.violation_time, 'No time provided')}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={request.status === 'pending' ? 'warning' : request.status === 'approved' ? 'success' : 'neutral'}>
+                        {request.status}
+                      </Badge>
+                    </TableCell>
+                    {canReview ? (
+                      <TableCell>
+                        <input
+                          value={reviewNotes[request.id] || ''}
+                          onChange={(event) => setReviewNotes((current) => ({ ...current, [request.id]: event.target.value }))}
+                          className="surface-soft h-11 w-full rounded-[18px] px-3 text-sm"
+                          placeholder="Reason or note"
+                        />
+                      </TableCell>
+                    ) : null}
+                    {canReview ? (
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          {request.status === 'pending' ? (
+                            <>
+                              <Button size="sm" variant="secondary" loading={reviewingId === request.id} onClick={() => reviewRequest(request.id, 'approve')}>
+                                <CheckCircle2 className="h-4 w-4" />
+                                Approve
+                              </Button>
+                              <Button size="sm" variant="ghost" loading={reviewingId === request.id} onClick={() => reviewRequest(request.id, 'reject')}>
+                                <Undo2 className="h-4 w-4" />
+                                Reject
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-sm text-[var(--text-muted)]">Reviewed</span>
+                          )}
+                        </div>
+                      </TableCell>
+                    ) : null}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {(canIssue || canRevoke) ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Active Strikes</CardTitle>
+            <CardDescription>Live strikes across members with direct removal when your role allows it.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {activeStrikes.length ? (
+              <Table>
+                <TableHead>
+                  <tr>
+                    <TableHeaderCell>User</TableHeaderCell>
+                    <TableHeaderCell>Reason</TableHeaderCell>
+                    <TableHeaderCell>Given By</TableHeaderCell>
+                    <TableHeaderCell>Date</TableHeaderCell>
+                    <TableHeaderCell>Expiry</TableHeaderCell>
+                    {canRevoke ? <TableHeaderCell className="text-right">Action</TableHeaderCell> : null}
+                  </tr>
+                </TableHead>
+                <TableBody>
+                  {activeStrikes.map((strike) => (
+                    <TableRow key={`${strike.user_id}-${strike.id}`}>
+                      <TableCell>
+                        <div className="font-semibold text-[var(--text-main)]">{strike.user_name}</div>
+                        <div className="mt-1 text-sm text-[var(--text-muted)]">
+                          {strike.user_username ? `@${strike.user_username}` : `ID ${strike.user_id}`}
+                        </div>
+                      </TableCell>
+                      <TableCell>{strike.reason}</TableCell>
+                      <TableCell>{userNameMap.get(String(strike.issued_by)) || strike.issued_by || 'System'}</TableCell>
+                      <TableCell>{formatDate(strike.timestamp)}</TableCell>
+                      <TableCell>{formatDate(strike.expires_at)}</TableCell>
+                      {canRevoke ? (
+                        <TableCell>
+                          <div className="flex justify-end">
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              loading={revokingId === strike.id}
+                              onClick={() => revokeStrike(strike.user_id, strike.id)}
+                            >
+                              <Undo2 className="h-4 w-4" />
+                              Remove Strike
+                            </Button>
+                          </div>
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="surface-soft rounded-[24px] px-5 py-12 text-center text-sm text-[var(--text-muted)]">
+                No active strikes are currently live.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Dialog open={requestDialogOpen} onOpenChange={(open) => {
+        setRequestDialogOpen(open);
+        if (!open) {
+          setRequestErrors({});
+        }
+      }}>
+        <DialogContent className="w-[min(96vw,760px)]">
+          <DialogHeader>
+            <DialogTitle>Apply for Strike</DialogTitle>
+            <DialogDescription>Submit a strike request with the people involved, time, and proof.</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <div className="grid gap-4">
+              <Button
+                variant="secondary"
+                className={`justify-between ${requestErrors.targets ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
+                onClick={() => setRequestPickerOpen(true)}
+              >
+                {requestTargets.length ? `${requestTargets.length} member(s) selected` : 'Choose target members'}
+                <ShieldCheck className="h-4 w-4" />
+              </Button>
+              <FieldError message={requestErrors.targets} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  value={requestForm.reason}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setRequestForm((current) => ({ ...current, reason: value }));
+                    setRequestErrors((current) => ({
+                      ...current,
+                      reason: value.trim() ? '' : current.reason,
+                    }));
+                  }}
+                  className={`surface-soft h-12 rounded-[22px] px-4 text-sm ${requestErrors.reason ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
+                  placeholder="Reason for strike request"
+                />
+                <input
+                  value={requestForm.violationTime}
+                  onChange={(event) => setRequestForm((current) => ({ ...current, violationTime: event.target.value }))}
+                  type="datetime-local"
+                  className="surface-soft h-12 rounded-[22px] px-4 text-sm"
+                />
+              </div>
+              <FieldError message={requestErrors.reason} />
+              <textarea
+                value={requestForm.proofLinks}
+                onChange={(event) => setRequestForm((current) => ({ ...current, proofLinks: event.target.value }))}
+                className="surface-soft min-h-28 rounded-[22px] px-4 py-3 text-sm"
+                placeholder="Proof links, one per line"
+              />
+              <textarea
+                value={requestForm.witnessText}
+                onChange={(event) => setRequestForm((current) => ({ ...current, witnessText: event.target.value }))}
+                className="surface-soft min-h-28 rounded-[22px] px-4 py-3 text-sm"
+                placeholder="Witness details or additional notes"
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRequestDialogOpen(false)}>Cancel</Button>
+            <Button loading={requestSaving} onClick={submitRequest}>Submit Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={issueDialogOpen} onOpenChange={(open) => {
+        setIssueDialogOpen(open);
+        if (!open) {
+          setIssueErrors({});
+        }
+      }}>
+        <DialogContent className="w-[min(96vw,760px)]">
+          <DialogHeader>
+            <DialogTitle>Add Strike</DialogTitle>
+            <DialogDescription>Directly issue a strike with reason, time of violation, and optional proof.</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <div className="grid gap-4">
+              <Button
+                variant="secondary"
+                className={`justify-between ${issueErrors.targets ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
+                onClick={() => setIssuePickerOpen(true)}
+              >
+                {issueTargets.length ? `${issueTargets.length} member(s) selected` : 'Choose target members'}
+                <Gavel className="h-4 w-4" />
+              </Button>
+              <FieldError message={issueErrors.targets} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  value={issueForm.reason}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setIssueForm((current) => ({ ...current, reason: value }));
+                    setIssueErrors((current) => ({
+                      ...current,
+                      reason: value.trim() ? '' : current.reason,
+                    }));
+                  }}
+                  className={`surface-soft h-12 rounded-[22px] px-4 text-sm ${issueErrors.reason ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
+                  placeholder="Reason for direct strike"
+                />
+                <input
+                  value={issueForm.violationTime}
+                  onChange={(event) => setIssueForm((current) => ({ ...current, violationTime: event.target.value }))}
+                  type="datetime-local"
+                  className="surface-soft h-12 rounded-[22px] px-4 text-sm"
+                />
+              </div>
+              <FieldError message={issueErrors.reason} />
+              <textarea
+                value={issueForm.proofLinks}
+                onChange={(event) => setIssueForm((current) => ({ ...current, proofLinks: event.target.value }))}
+                className="surface-soft min-h-24 rounded-[22px] px-4 py-3 text-sm"
+                placeholder="Proof links, one per line"
+              />
+              <textarea
+                value={issueForm.witnessText}
+                onChange={(event) => setIssueForm((current) => ({ ...current, witnessText: event.target.value }))}
+                className="surface-soft min-h-24 rounded-[22px] px-4 py-3 text-sm"
+                placeholder="Additional notes"
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIssueDialogOpen(false)}>Cancel</Button>
+            <Button loading={issueSaving} onClick={issueDirectStrike}>Issue Strike</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <SearchPickerDialog
+        open={requestPickerOpen}
+        onOpenChange={setRequestPickerOpen}
+        title="Choose Members"
+        description="Select one or more members for the strike request."
+        items={userItems(dashboard.users)}
+        selectedIds={requestTargets}
+        onConfirm={(ids) => {
+          setRequestTargets(ids);
+          setRequestErrors((current) => ({ ...current, targets: '' }));
+        }}
+        multiple
+        placeholder="Search members"
+      />
+
+      <SearchPickerDialog
+        open={issuePickerOpen}
+        onOpenChange={setIssuePickerOpen}
+        title="Choose Members"
+        description="Select one or more members for a direct strike."
+        items={userItems(dashboard.users)}
+        selectedIds={issueTargets}
+        onConfirm={(ids) => {
+          setIssueTargets(ids);
+          setIssueErrors((current) => ({ ...current, targets: '' }));
+        }}
+        multiple
+        placeholder="Search members"
+      />
+    </div>
+  );
+}

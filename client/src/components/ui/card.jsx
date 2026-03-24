@@ -1,7 +1,7 @@
 import { cn } from '../../lib/cn';
 
 export function Card({ className, ...props }) {
-  return <div className={cn('surface rounded-[28px]', className)} {...props} />;
+  return <div className={cn('surface rounded-[24px]', className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }) {
@@ -13,7 +13,7 @@ export function CardTitle({ className, ...props }) {
 }
 
 export function CardDescription({ className, ...props }) {
-  return <p className={cn('text-sm text-[var(--text-muted)]', className)} {...props} />;
+  return <p className={cn('text-sm leading-6 text-[var(--text-muted)]', className)} {...props} />;
 }
 
 export function CardContent({ className, ...props }) {

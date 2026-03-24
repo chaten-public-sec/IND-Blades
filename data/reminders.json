@@ -1,6 +1,6 @@
 {
   "__welcome__": {
-    "enabled": false,
+    "enabled": true,
     "channel_id": 1478106773595357185
   },
   "__activity__": {
@@ -15,7 +15,8 @@
   },
   "__autorole__": {
     "join_role_id": null,
-    "bindings": []
+    "bindings": [],
+    "strike_mapping": {}
   },
   "__notifications__": {
     "enabled": true,
@@ -40,7 +41,7 @@
     "strike_mapping": {}
   },
   "__logs_v2__": {
-    "enabled": false,
+    "enabled": true,
     "categories": []
   },
   "__activity_config__": {
