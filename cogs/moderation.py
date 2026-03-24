@@ -102,7 +102,14 @@ class Moderation(commands.Cog):
                     if not member:
                         member = await guild.fetch_member(int(user_id))
                     if member:
-                        self.bot.dispatch("strike_updated", guild, member, strike_count, "added" if cmd_type == "strike_added" else "removed")
+                        self.bot.dispatch(
+                            "strike_updated",
+                            guild,
+                            member,
+                            strike_count,
+                            "added" if cmd_type == "strike_added" else "removed",
+                            payload,
+                        )
                 
                 elif cmd_type in ("event_created", "event_updated", "event_deleted", "event_paused", "event_resumed"):
                     event_data = payload.get("event", {})
@@ -155,7 +162,7 @@ class Moderation(commands.Cog):
                     if not member:
                         member = await guild.fetch_member(int(user_id))
                     if member:
-                        self.bot.dispatch("strike_updated", guild, member, user_data["strike_count"], "expired")
+                        self.bot.dispatch("strike_updated", guild, member, user_data["strike_count"], "expired", {})
                 except Exception:
                     pass
         if changed:
@@ -232,7 +239,25 @@ class Moderation(commands.Cog):
             embed = self.strike_embed(user, reason, count)
             await interaction.response.send_message(embed=embed)
             await self.send_mod_log(interaction.guild, self.mod_log_embed("Strike Added", interaction.user, user, reason, strikes=count))
-            self.bot.dispatch("strike_updated", interaction.guild, user, count, "added")
+            self.bot.dispatch(
+                "strike_updated",
+                interaction.guild,
+                user,
+                count,
+                "added",
+                {
+                    "user_id": str(user.id),
+                    "reason": reason,
+                    "strike_count": count,
+                    "issued_by": str(interaction.user.id),
+                    "issued_by_name": interaction.user.display_name,
+                    "issued_by_role": None,
+                    "expires_at": strike_entry["expires_at"],
+                    "violation_time": strike_entry["timestamp"],
+                    "proof_links": [],
+                    "witness_text": "",
+                },
+            )
 
         elif action == "remove":
             user_id = str(user.id)
@@ -247,7 +272,20 @@ class Moderation(commands.Cog):
             
             await interaction.response.send_message(f"Removed latest strike from {user.mention}. Total strikes: {count}")
             await self.send_mod_log(interaction.guild, self.mod_log_embed("Strike Removed", interaction.user, user, f"Removed: {removed['reason']}", strikes=count))
-            self.bot.dispatch("strike_updated", interaction.guild, user, count, "removed")
+            self.bot.dispatch(
+                "strike_updated",
+                interaction.guild,
+                user,
+                count,
+                "removed",
+                {
+                    "user_id": str(user.id),
+                    "strike_count": count,
+                    "removed_by": str(interaction.user.id),
+                    "removed_by_name": interaction.user.display_name,
+                    "reason": f"Removed: {removed['reason']}",
+                },
+            )
 
     async def permission_check(self, interaction: discord.Interaction, perm: str):
         if getattr(interaction.user.guild_permissions, perm):

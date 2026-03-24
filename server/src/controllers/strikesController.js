@@ -54,7 +54,16 @@ async function applyStrikeToTargets({
     commandQueueService.enqueueCommand('strike_added', {
       user_id: targetUserId,
       reason: strikeEntry.reason,
-      strike_count: saved.strike_count
+      strike_count: saved.strike_count,
+      issued_by: actor.id,
+      issued_by_name: actor.display_name || actor.username || actor.id,
+      issued_by_role: actor.primary_role || null,
+      violation_time: strikeEntry.violation_time,
+      expires_at: strikeEntry.expires_at,
+      proof_links: strikeEntry.proof_links,
+      witness_text: strikeEntry.witness_text,
+      strike_id: strikeEntry.id || null,
+      request_id: requestId
     });
     emitSystemUpdate('STRIKE_ADDED', {
       user_id: targetUserId,
@@ -157,7 +166,11 @@ function createStrikesController({
 
       commandQueueService.enqueueCommand('strike_removed', {
         user_id: userId,
-        strike_count: saved.strike_count
+        strike_count: saved.strike_count,
+        removed_by: req.viewer.id,
+        removed_by_name: req.viewer.display_name || req.viewer.username || req.viewer.id,
+        reason: revokeReason || '',
+        strike_id: strikeId
       });
       emitSystemUpdate('STRIKE_REMOVED', { user_id: userId, strike_count: saved.strike_count });
       logService.appendLog(`Revoked strike ${strikeId} from ${userId}.`, 'info', 'strikes', { user_id: userId, strike_id: strikeId });

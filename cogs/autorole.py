@@ -25,7 +25,7 @@ class AutoRole(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_strike_updated(self, guild, member, count, reason):
+    async def on_strike_updated(self, guild, member, count, reason, details=None):
         if member.bot: return
         
         config = get_autorole_config()
