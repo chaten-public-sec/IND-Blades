@@ -195,7 +195,7 @@ async function createApplication() {
       return;
     }
 
-    if (last.type === 'strike_added' || last.type === 'strike_removed') {
+    if (last.type === 'strike_added' || last.type === 'strike_removed' || last.type === 'strike_sync') {
       discordService.invalidateCatalogCaches();
       emitSystemUpdate('USER_UPDATED', last.payload || {});
       return;

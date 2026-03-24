@@ -103,6 +103,24 @@ function createStrikesController({
 
     postStrikeConfig(req, res) {
       const config = legacyStoreService.setStrikeConfig(req.body || {});
+
+      if (Object.prototype.hasOwnProperty.call(req.body || {}, 'strike_mapping')) {
+        const store = legacyStoreService.readStore();
+        const strikeRows = store.__strikes__ && typeof store.__strikes__ === 'object' ? Object.values(store.__strikes__) : [];
+
+        for (const row of strikeRows) {
+          const userId = row?.user_id ? String(row.user_id) : '';
+          if (!userId) {
+            continue;
+          }
+
+          commandQueueService.enqueueCommand('strike_sync', {
+            user_id: userId,
+            strike_count: Number(row?.strike_count || 0)
+          });
+        }
+      }
+
       emitSystemUpdate('STRIKE_CONFIG_UPDATED', config);
       logService.appendLog('Updated strike configuration.', 'info', 'strikes');
       res.json({ success: true, config });

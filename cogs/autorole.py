@@ -26,12 +26,16 @@ class AutoRole(commands.Cog):
 
     @commands.Cog.listener()
     async def on_strike_updated(self, guild, member, count, reason, details=None):
-        if member.bot: return
+        if member.bot:
+            return
         
         config = get_autorole_config()
         mapping = config.get("strike_mapping", {})
         
-        if not mapping: return
+        if not mapping:
+            return
+
+        guild_ref = member.guild or guild
 
         target_role_ids = set()
         all_strike_role_ids = set()
@@ -51,21 +55,27 @@ class AutoRole(commands.Cog):
 
         roles_to_remove = []
         for r_id in all_strike_role_ids - target_role_ids:
-            role = guild.get_role(int(r_id))
+            role = guild_ref.get_role(int(r_id))
             if role and role in member.roles:
                 roles_to_remove.append(role)
         
         if roles_to_remove:
-            await member.remove_roles(*roles_to_remove, reason=f"Strike count updated to {count}")
+            try:
+                await member.remove_roles(*roles_to_remove, reason=f"Strike count updated to {count}")
+            except Exception as error:
+                print(f"[AutoRole] Failed to remove strike roles from {member.id}: {error}")
 
         roles_to_add = []
         for r_id in target_role_ids:
-            target_role = guild.get_role(int(r_id))
+            target_role = guild_ref.get_role(int(r_id))
             if target_role and target_role not in member.roles:
                 roles_to_add.append(target_role)
 
         if roles_to_add:
-            await member.add_roles(*roles_to_add, reason=f"Strike count updated to {count}")
+            try:
+                await member.add_roles(*roles_to_add, reason=f"Strike count updated to {count}")
+            except Exception as error:
+                print(f"[AutoRole] Failed to add strike roles to {member.id}: {error}")
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):

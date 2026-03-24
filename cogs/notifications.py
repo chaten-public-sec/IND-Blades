@@ -76,6 +76,9 @@ class Notifications(commands.Cog):
 
     @commands.Cog.listener()
     async def on_strike_updated(self, guild, member, count, action_type, details=None):
+        if action_type == "sync":
+            return
+
         title = "System Dispatch: Strike Update"
         color = 0xED4245 if action_type == "added" else 0x51A7FF
 

@@ -11,11 +11,19 @@ from utils.storage import get_log_settings, load_data, save_data
 COMMANDS_PATH = os.path.join("data", "commands.json")
 
 DEFAULT_MODERATION_LOGS_CHANNEL_ID = int(os.getenv("MODERATION_LOGS_CHANNEL_ID", "0") or 0)
+TARGET_GUILD_ID = int(os.getenv("GUILD_ID", "0") or 0)
 
 
 class Moderation(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    def resolve_guild(self):
+        if TARGET_GUILD_ID:
+            guild = self.bot.get_guild(TARGET_GUILD_ID)
+            if guild:
+                return guild
+        return self.bot.guilds[0] if self.bot.guilds else None
 
     def resolve_log_channel(self, guild: discord.Guild):
         settings = get_log_settings()
@@ -71,7 +79,7 @@ class Moderation(commands.Cog):
     @tasks.loop(seconds=5)
     async def global_command_worker(self):
         """Process strike and event commands from dashboard API."""
-        guild = self.bot.guilds[0] if self.bot.guilds else None
+        guild = self.resolve_guild()
         if not guild:
             return
         commands_list = self.load_commands()
@@ -95,21 +103,26 @@ class Moderation(commands.Cog):
             payload = cmd.get("payload", {})
             
             try:
-                if cmd_type in ("strike_added", "strike_removed"):
+                if cmd_type in ("strike_added", "strike_removed", "strike_sync"):
                     user_id = payload.get("user_id")
+                    if not user_id:
+                        raise RuntimeError("Strike command is missing user_id")
+
                     strike_count = payload.get("strike_count", 0)
                     member = guild.get_member(int(user_id))
                     if not member:
                         member = await guild.fetch_member(int(user_id))
-                    if member:
-                        self.bot.dispatch(
-                            "strike_updated",
-                            guild,
-                            member,
-                            strike_count,
-                            "added" if cmd_type == "strike_added" else "removed",
-                            payload,
-                        )
+                    if not member:
+                        raise RuntimeError(f"Member {user_id} was not found in guild {guild.id}")
+
+                    self.bot.dispatch(
+                        "strike_updated",
+                        guild,
+                        member,
+                        strike_count,
+                        "added" if cmd_type == "strike_added" else ("removed" if cmd_type == "strike_removed" else "sync"),
+                        payload,
+                    )
                 
                 elif cmd_type in ("event_created", "event_updated", "event_deleted", "event_paused", "event_resumed"):
                     event_data = payload.get("event", {})
@@ -127,10 +140,16 @@ class Moderation(commands.Cog):
                     # Notify system
                     self.bot.dispatch("event_state_change", guild, event_data, action_map.get(cmd_type, "Action performed"), None)
                     
-            except Exception as e:
-                print(f"[ERROR] Command worker failed for {cmd_type}: {e}")
-            
+            except Exception as error:
+                print(f"[ERROR] Command worker failed for {cmd_type}: {error}")
+                cmd["status"] = "failed"
+                cmd["error"] = str(error)
+                cmd["completed_at"] = discord.utils.utcnow().isoformat()
+                self.save_commands(commands_list)
+                continue
+
             cmd["status"] = "done"
+            cmd.pop("error", None)
             cmd["completed_at"] = discord.utils.utcnow().isoformat()
             self.save_commands(commands_list)
 
@@ -143,7 +162,7 @@ class Moderation(commands.Cog):
         data = load_data()
         if "__strikes__" not in data:
             return
-        guild = self.bot.guilds[0] if self.bot.guilds else None
+        guild = self.resolve_guild()
         if not guild:
             return
         changed = False
