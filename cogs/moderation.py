@@ -1,5 +1,6 @@
 import os
 import json
+import uuid
 from datetime import timedelta
 
 import discord
@@ -76,6 +77,40 @@ class Moderation(commands.Cog):
         with open(COMMANDS_PATH, "w", encoding="utf-8") as f:
             json.dump(commands_list, f, indent=2)
 
+    def parse_iso(self, value):
+        if not value:
+            return None
+        try:
+            return discord.utils.parse_time(value)
+        except Exception:
+            return None
+
+    def mark_command_done(self, cmd, note=None):
+        cmd["status"] = "done"
+        cmd.pop("error", None)
+        cmd.pop("retry_at", None)
+        cmd.pop("processing_started_at", None)
+        if note:
+            cmd["note"] = note
+        else:
+            cmd.pop("note", None)
+        cmd["completed_at"] = discord.utils.utcnow().isoformat()
+
+    def mark_command_failed(self, cmd, error):
+        attempts = int(cmd.get("attempts", 0) or 0)
+        max_attempts = int(cmd.get("max_attempts", 5) or 5)
+        retry_delay_seconds = min(60, max(5, attempts * 5))
+
+        cmd["status"] = "failed"
+        cmd["error"] = str(error)
+        cmd["completed_at"] = discord.utils.utcnow().isoformat()
+        cmd.pop("processing_started_at", None)
+
+        if attempts < max_attempts:
+            cmd["retry_at"] = (discord.utils.utcnow() + timedelta(seconds=retry_delay_seconds)).isoformat()
+        else:
+            cmd.pop("retry_at", None)
+
     @tasks.loop(seconds=5)
     async def global_command_worker(self):
         """Process strike and event commands from dashboard API."""
@@ -84,11 +119,37 @@ class Moderation(commands.Cog):
             return
         commands_list = self.load_commands()
         updated = False
+        now = discord.utils.utcnow()
         
-        # Mark pending commands as processing
+        # Recover stale or retryable commands before claiming new work.
         for cmd in commands_list:
-            if cmd.get("status") == "pending":
+            status = cmd.get("status")
+            attempts = int(cmd.get("attempts", 0) or 0)
+            max_attempts = int(cmd.get("max_attempts", 5) or 5)
+
+            if status == "processing":
+                started_at = self.parse_iso(cmd.get("processing_started_at"))
+                if not started_at or (now - started_at).total_seconds() >= 90:
+                    cmd["status"] = "pending"
+                    cmd.pop("processing_started_at", None)
+                    updated = True
+                    status = "pending"
+
+            if status == "failed" and attempts < max_attempts:
+                retry_at = self.parse_iso(cmd.get("retry_at"))
+                if not retry_at or retry_at <= now:
+                    cmd["status"] = "pending"
+                    cmd.pop("retry_at", None)
+                    updated = True
+                    status = "pending"
+
+            if status == "pending":
+                available_at = self.parse_iso(cmd.get("available_at"))
+                if available_at and available_at > now:
+                    continue
                 cmd["status"] = "processing"
+                cmd["attempts"] = attempts + 1
+                cmd["processing_started_at"] = now.isoformat()
                 updated = True
         
         if updated:
@@ -111,16 +172,29 @@ class Moderation(commands.Cog):
                     strike_count = payload.get("strike_count", 0)
                     member = guild.get_member(int(user_id))
                     if not member:
-                        member = await guild.fetch_member(int(user_id))
+                        try:
+                            member = await guild.fetch_member(int(user_id))
+                        except discord.NotFound:
+                            member = None
                     if not member:
-                        raise RuntimeError(f"Member {user_id} was not found in guild {guild.id}")
+                        self.mark_command_done(cmd, "member_not_found")
+                        self.save_commands(commands_list)
+                        continue
+
+                    action_type = payload.get("action")
+                    if cmd_type == "strike_added":
+                        action_type = "added"
+                    elif cmd_type == "strike_removed":
+                        action_type = "removed"
+                    else:
+                        action_type = str(action_type or "sync")
 
                     self.bot.dispatch(
                         "strike_updated",
                         guild,
                         member,
                         strike_count,
-                        "added" if cmd_type == "strike_added" else ("removed" if cmd_type == "strike_removed" else "sync"),
+                        action_type,
                         payload,
                     )
                 
@@ -142,15 +216,11 @@ class Moderation(commands.Cog):
                     
             except Exception as error:
                 print(f"[ERROR] Command worker failed for {cmd_type}: {error}")
-                cmd["status"] = "failed"
-                cmd["error"] = str(error)
-                cmd["completed_at"] = discord.utils.utcnow().isoformat()
+                self.mark_command_failed(cmd, error)
                 self.save_commands(commands_list)
                 continue
 
-            cmd["status"] = "done"
-            cmd.pop("error", None)
-            cmd["completed_at"] = discord.utils.utcnow().isoformat()
+            self.mark_command_done(cmd)
             self.save_commands(commands_list)
 
     @global_command_worker.before_loop
@@ -188,11 +258,9 @@ class Moderation(commands.Cog):
             save_data(data)
 
     async def cog_load(self):
-        self.strike_expiry_check.start()
         self.global_command_worker.start()
 
     async def cog_unload(self):
-        self.strike_expiry_check.cancel()
         self.global_command_worker.cancel()
 
     @app_commands.command(name="strike", description="Manage strikes")
@@ -245,13 +313,27 @@ class Moderation(commands.Cog):
             if user_id not in data["__strikes__"]:
                 data["__strikes__"][user_id] = {"user_id": user_id, "strikes": [], "strike_count": 0}
             
+            timestamp = discord.utils.utcnow().isoformat()
             strike_entry = {
+                "id": str(uuid.uuid4()),
                 "reason": reason,
-                "timestamp": discord.utils.utcnow().isoformat(),
-                "expires_at": (discord.utils.utcnow() + timedelta(days=expiry)).isoformat()
+                "timestamp": timestamp,
+                "violation_time": timestamp,
+                "expires_at": (discord.utils.utcnow() + timedelta(days=expiry)).isoformat(),
+                "issued_by": str(interaction.user.id),
+                "issued_by_role": None,
+                "proof_links": [],
+                "witness_text": "",
+                "request_id": None,
+                "status": "active",
+                "revoked_at": None,
+                "revoked_by": None,
+                "revoked_reason": "",
+                "expired_at": None,
+                "metadata": {}
             }
             data["__strikes__"][user_id]["strikes"].append(strike_entry)
-            data["__strikes__"][user_id]["strike_count"] = len(data["__strikes__"][user_id]["strikes"])
+            data["__strikes__"][user_id]["strike_count"] = len([s for s in data["__strikes__"][user_id]["strikes"] if s.get("status", "active") == "active"])
             count = data["__strikes__"][user_id]["strike_count"]
             save_data(data)
             
@@ -283,9 +365,28 @@ class Moderation(commands.Cog):
             if "__strikes__" not in data or user_id not in data["__strikes__"] or not data["__strikes__"][user_id]["strikes"]:
                 await interaction.response.send_message("This user has no strikes.", ephemeral=True)
                 return
-            
-            removed = data["__strikes__"][user_id]["strikes"].pop()
-            data["__strikes__"][user_id]["strike_count"] = len(data["__strikes__"][user_id]["strikes"])
+
+            active_indexes = [
+                index for index, strike in enumerate(data["__strikes__"][user_id]["strikes"])
+                if strike.get("status", "active") == "active"
+            ]
+            if not active_indexes:
+                await interaction.response.send_message("This user has no active strikes.", ephemeral=True)
+                return
+
+            removed_index = active_indexes[-1]
+            removed = data["__strikes__"][user_id]["strikes"][removed_index]
+            data["__strikes__"][user_id]["strikes"][removed_index] = {
+                **removed,
+                "status": "revoked",
+                "revoked_at": discord.utils.utcnow().isoformat(),
+                "revoked_by": str(interaction.user.id),
+                "revoked_reason": f"Removed: {removed['reason']}",
+            }
+            data["__strikes__"][user_id]["strike_count"] = len([
+                strike for strike in data["__strikes__"][user_id]["strikes"]
+                if strike.get("status", "active") == "active"
+            ])
             count = data["__strikes__"][user_id]["strike_count"]
             save_data(data)
             

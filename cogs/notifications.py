@@ -74,26 +74,79 @@ class Notifications(commands.Cog):
         except Exception as error:
             print(f"[ERROR] Failed to send strike DM to {member.id}: {error}")
 
+    async def send_target_strike_update_dm(self, member: discord.Member, count: int, action_type: str, details: dict):
+        action_type = str(action_type or "updated")
+
+        if action_type == "added":
+            await self.send_target_strike_dm(member, count, details)
+            return
+
+        title_map = {
+            "removed": "Strike Removed",
+            "expired": "Strike Expired",
+            "history_cleared": "Strike History Cleared",
+        }
+        description_map = {
+            "removed": "One of your strikes has been removed in IND Blades.",
+            "expired": "One of your strikes has expired in IND Blades.",
+            "history_cleared": "Your full strike history has been cleared in IND Blades.",
+        }
+        color_map = {
+            "removed": 0x57F287,
+            "expired": 0xFEE75C,
+            "history_cleared": 0x57F287,
+        }
+
+        if action_type not in title_map:
+            return
+
+        embed = discord.Embed(
+            title=title_map[action_type],
+            description=description_map[action_type],
+            color=color_map[action_type],
+        )
+        embed.add_field(name="Total Active Strikes", value=str(count), inline=True)
+
+        if action_type == "removed":
+            removed_by_name = str(details.get("removed_by_name") or "Management")
+            reason = str(details.get("reason") or "No reason provided")
+            embed.add_field(name="Updated By", value=removed_by_name[:1024], inline=True)
+            embed.add_field(name="Reason", value=reason[:1024], inline=False)
+        elif action_type == "history_cleared":
+            cleared_by_name = str(details.get("cleared_by_name") or "Management")
+            cleared_count = int(details.get("cleared_count") or 0)
+            embed.add_field(name="Updated By", value=cleared_by_name[:1024], inline=True)
+            embed.add_field(name="Cleared Records", value=str(cleared_count), inline=True)
+
+        embed.set_footer(text="IND Blades | Strike Notice")
+        embed.timestamp = discord.utils.utcnow()
+
+        try:
+            if member.dm_channel is None:
+                await member.create_dm()
+            await member.dm_channel.send(embed=embed)
+        except Exception as error:
+            print(f"[ERROR] Failed to send strike update DM to {member.id}: {error}")
+
     @commands.Cog.listener()
     async def on_strike_updated(self, guild, member, count, action_type, details=None):
         if action_type == "sync":
             return
 
         title = "System Dispatch: Strike Update"
-        color = 0xED4245 if action_type == "added" else 0x51A7FF
+        color = 0xED4245 if action_type == "added" else (0x57F287 if action_type in ("removed", "history_cleared") else 0x51A7FF)
+        action_label = str(action_type or "updated").replace("_", " ").title()
 
         embed = discord.Embed(title=title, color=color)
         embed.description = f"A strike action has been processed for **{member.name}**."
         embed.add_field(name="Target Member", value=member.mention, inline=True)
-        embed.add_field(name="Action", value=action_type.capitalize(), inline=True)
+        embed.add_field(name="Action", value=action_label, inline=True)
         embed.add_field(name="Total Active Strikes", value=str(count), inline=True)
         embed.set_footer(text="IND Blades | Smart System")
         embed.timestamp = discord.utils.utcnow()
 
         await self.notify_users(guild, embed)
-
-        if action_type == "added":
-            await self.send_target_strike_dm(member, count, details or {})
+        await self.send_target_strike_update_dm(member, count, action_type, details or {})
 
     @commands.Cog.listener()
     async def on_event_state_change(self, guild, reminder, action_text, actor=None):

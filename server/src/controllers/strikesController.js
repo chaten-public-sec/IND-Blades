@@ -1,4 +1,4 @@
-const { WEBSITE_ROLES } = require('../constants/roles');
+const crypto = require('crypto');
 
 function normalizeTargetIds(body) {
   if (Array.isArray(body?.target_user_ids)) {
@@ -15,6 +15,7 @@ function buildStrikeEntry(body, actor, strikeConfig, requestId = null) {
   const expiresAt = new Date(now.getTime() + Number(strikeConfig.expiry_days || 7) * 24 * 60 * 60 * 1000);
 
   return {
+    id: crypto.randomUUID(),
     reason: String(body.reason || 'Manual Strike'),
     timestamp: now.toISOString(),
     violation_time: body.violation_time || now.toISOString(),
@@ -24,10 +25,36 @@ function buildStrikeEntry(body, actor, strikeConfig, requestId = null) {
     proof_links: Array.isArray(body.proof_links) ? body.proof_links.map(String).filter(Boolean) : [],
     witness_text: String(body.witness_text || ''),
     request_id: requestId,
+    status: 'active',
     metadata: {
       multiple_users: normalizeTargetIds(body).length > 1
     }
   };
+}
+
+function countActiveStrikes(strikes) {
+  return (Array.isArray(strikes) ? strikes : []).filter((item) => item.status === 'active').length;
+}
+
+function syncUserStrikeRoles({
+  commandQueueService,
+  emitSystemUpdate,
+  userId,
+  strikeCount,
+  commandType = 'strike_sync',
+  action = 'sync',
+  payload = {}
+}) {
+  const syncPayload = {
+    user_id: String(userId),
+    strike_count: Number(strikeCount || 0),
+    action,
+    ...payload
+  };
+
+  commandQueueService.enqueueCommand(commandType, syncPayload);
+  emitSystemUpdate('STRIKE_UPDATED', syncPayload);
+  return syncPayload;
 }
 
 async function applyStrikeToTargets({
@@ -48,26 +75,28 @@ async function applyStrikeToTargets({
     const strikeData = legacyStoreService.getUserStrikes(targetUserId);
     const strikeEntry = buildStrikeEntry(body, actor, strikeConfig, requestId);
     strikeData.strikes.push(strikeEntry);
-    strikeData.strike_count = strikeData.strikes.filter((item) => item.status !== 'revoked' && item.status !== 'expired').length;
+    strikeData.strike_count = countActiveStrikes(strikeData.strikes);
     const saved = legacyStoreService.setUserStrikes(targetUserId, strikeData);
 
-    commandQueueService.enqueueCommand('strike_added', {
-      user_id: targetUserId,
-      reason: strikeEntry.reason,
-      strike_count: saved.strike_count,
-      issued_by: actor.id,
-      issued_by_name: actor.display_name || actor.username || actor.id,
-      issued_by_role: actor.primary_role || null,
-      violation_time: strikeEntry.violation_time,
-      expires_at: strikeEntry.expires_at,
-      proof_links: strikeEntry.proof_links,
-      witness_text: strikeEntry.witness_text,
-      strike_id: strikeEntry.id || null,
-      request_id: requestId
-    });
-    emitSystemUpdate('STRIKE_ADDED', {
-      user_id: targetUserId,
-      strike_count: saved.strike_count
+    syncUserStrikeRoles({
+      commandQueueService,
+      emitSystemUpdate,
+      userId: targetUserId,
+      strikeCount: saved.strike_count,
+      commandType: 'strike_added',
+      action: 'added',
+      payload: {
+        reason: strikeEntry.reason,
+        issued_by: actor.id,
+        issued_by_name: actor.display_name || actor.username || actor.id,
+        issued_by_role: actor.primary_role || null,
+        violation_time: strikeEntry.violation_time,
+        expires_at: strikeEntry.expires_at,
+        proof_links: strikeEntry.proof_links,
+        witness_text: strikeEntry.witness_text,
+        strike_id: strikeEntry.id,
+        request_id: requestId
+      }
     });
 
     await notificationService.createForUsers([targetUserId], {
@@ -179,18 +208,23 @@ function createStrikesController({
         revoked_by: req.viewer.id,
         revoked_reason: revokeReason
       };
-      strikeData.strike_count = strikeData.strikes.filter((item) => item.status === 'active').length;
+      strikeData.strike_count = countActiveStrikes(strikeData.strikes);
       const saved = legacyStoreService.setUserStrikes(userId, strikeData);
 
-      commandQueueService.enqueueCommand('strike_removed', {
-        user_id: userId,
-        strike_count: saved.strike_count,
-        removed_by: req.viewer.id,
-        removed_by_name: req.viewer.display_name || req.viewer.username || req.viewer.id,
-        reason: revokeReason || '',
-        strike_id: strikeId
+      syncUserStrikeRoles({
+        commandQueueService,
+        emitSystemUpdate,
+        userId,
+        strikeCount: saved.strike_count,
+        commandType: 'strike_removed',
+        action: 'removed',
+        payload: {
+          removed_by: req.viewer.id,
+          removed_by_name: req.viewer.display_name || req.viewer.username || req.viewer.id,
+          reason: revokeReason || '',
+          strike_id: strikeId
+        }
       });
-      emitSystemUpdate('STRIKE_REMOVED', { user_id: userId, strike_count: saved.strike_count });
       logService.appendLog(`Revoked strike ${strikeId} from ${userId}.`, 'info', 'strikes', { user_id: userId, strike_id: strikeId });
 
       await notificationService.createForUsers([userId], {
@@ -212,6 +246,66 @@ function createStrikesController({
       );
 
       res.json({ success: true, strike_data: saved });
+    },
+
+    async clearHistory(req, res) {
+      const userId = String(req.body?.user_id || '').trim();
+
+      if (!userId) {
+        res.status(400).json({ error: 'Choose a user first.' });
+        return;
+      }
+
+      const existing = legacyStoreService.getUserStrikes(userId);
+      const clearedCount = Array.isArray(existing.strikes) ? existing.strikes.length : 0;
+      const saved = legacyStoreService.setUserStrikes(userId, {
+        user_id: userId,
+        strikes: [],
+        strike_count: 0
+      });
+
+      syncUserStrikeRoles({
+        commandQueueService,
+        emitSystemUpdate,
+        userId,
+        strikeCount: 0,
+        commandType: 'strike_sync',
+        action: 'history_cleared',
+        payload: {
+          cleared_by: req.viewer.id,
+          cleared_by_name: req.viewer.display_name || req.viewer.username || req.viewer.id,
+          cleared_count: clearedCount
+        }
+      });
+
+      logService.appendLog(`Cleared strike history for ${userId}.`, 'warning', 'strikes', {
+        user_id: userId,
+        cleared_count: clearedCount,
+        cleared_by: req.viewer.id
+      });
+
+      await notificationService.createForUsers([userId], {
+        actor_user_id: req.viewer.id,
+        type: 'strike_update',
+        title: 'Strike History Cleared',
+        message: `${req.viewer.display_name} cleared your strike history.`,
+        meta: {
+          cleared_count: clearedCount
+        }
+      });
+
+      await notificationService.notifyEscalation(
+        req.viewer,
+        'Strike History Cleared',
+        `${req.viewer.display_name} cleared all strike history for ${userId}.`,
+        { user_id: userId, cleared_count: clearedCount }
+      );
+
+      res.json({
+        success: true,
+        strike_data: saved,
+        cleared_count: clearedCount
+      });
     },
 
     async listRequests(req, res) {

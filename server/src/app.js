@@ -170,6 +170,46 @@ async function createApplication() {
     strikesController
   }));
 
+  const runStrikeExpirySweep = () => {
+    try {
+      const result = legacyStoreService.cleanupExpiredStrikes();
+      if (!result.changed) {
+        return;
+      }
+
+      discordService.invalidateCatalogCaches();
+      for (const entry of result.users) {
+        commandQueueService.enqueueCommand('strike_sync', {
+          user_id: entry.user_id,
+          strike_count: entry.strike_count,
+          action: 'expired',
+          expired_count: entry.expired_count,
+          expired_strike_ids: entry.expired_strike_ids
+        });
+        emitSystemUpdate('STRIKE_UPDATED', {
+          user_id: entry.user_id,
+          strike_count: entry.strike_count,
+          action: 'expired',
+          expired_count: entry.expired_count
+        });
+      }
+
+      logService.appendLog(
+        `Expired ${result.total_expired} strike(s) across ${result.users.length} member(s).`,
+        'info',
+        'strikes',
+        {
+          expired_users: result.users.map((item) => item.user_id),
+          expired_count: result.total_expired
+        }
+      );
+    } catch (error) {
+      console.error('[strike-expiry]', error);
+    }
+  };
+  const strikeExpiryInterval = setInterval(runStrikeExpirySweep, 60 * 1000);
+  const strikeExpiryTimeout = setTimeout(runStrikeExpirySweep, 5000);
+
   fs.watchFile(REMINDERS_PATH, { interval: 1000 }, () => {
     if (Date.now() - lastManualEmit < 1200) {
       return;
@@ -226,6 +266,8 @@ async function createApplication() {
       fs.unwatchFile(REMINDERS_PATH);
       fs.unwatchFile(LOGS_PATH);
       fs.unwatchFile(COMMANDS_PATH);
+      clearTimeout(strikeExpiryTimeout);
+      clearInterval(strikeExpiryInterval);
       await appStoreService.close();
     },
     services: {

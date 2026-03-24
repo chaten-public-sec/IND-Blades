@@ -34,6 +34,7 @@ class MyBot(commands.Bot):
         await self.load_extension("cogs.welcome")
         await self.load_extension("cogs.logs")
         await self.load_extension("cogs.moderation")
+        await self.load_extension("cogs.autorole")
         await self.load_extension("cogs.activity")
         await self.load_extension("cogs.status")
         await self.load_extension("cogs.notifications")

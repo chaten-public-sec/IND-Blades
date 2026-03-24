@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Gavel, Save, ShieldAlert, ShieldCheck, Undo2 } from 'lucide-react';
+import { CheckCircle2, Gavel, Save, ShieldAlert, ShieldCheck, Trash2, Undo2 } from 'lucide-react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/access';
@@ -86,6 +86,7 @@ export default function StrikePage() {
   const canIssue = hasPermission(dashboard.viewer, 'issue_strikes');
   const canRevoke = hasPermission(dashboard.viewer, 'revoke_strikes');
   const canManageStrikeConfig = hasPermission(dashboard.viewer, 'manage_strike_config');
+  const canClearHistory = hasPermission(dashboard.viewer, 'clear_strike_history');
 
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [issueDialogOpen, setIssueDialogOpen] = useState(false);
@@ -102,6 +103,8 @@ export default function StrikePage() {
   const [reviewNotes, setReviewNotes] = useState({});
   const [reviewingId, setReviewingId] = useState('');
   const [revokingId, setRevokingId] = useState('');
+  const [clearHistoryUser, setClearHistoryUser] = useState(null);
+  const [clearingHistory, setClearingHistory] = useState(false);
   const [strikeRoleDraft, setStrikeRoleDraft] = useState(() => normalizeStrikeRoleDraft(dashboard.strikeConfig));
   const [strikeRoleErrors, setStrikeRoleErrors] = useState({});
   const [savingStrikeRoles, setSavingStrikeRoles] = useState(false);
@@ -128,6 +131,20 @@ export default function StrikePage() {
           user_username: user.username,
         }))
     )
+  ), [dashboard.users]);
+
+  const usersWithStrikeHistory = useMemo(() => (
+    dashboard.users
+      .filter((user) => Array.isArray(user.strikes) && user.strikes.length > 0)
+      .map((user) => ({
+        ...user,
+        active_count: (user.strikes || []).filter((strike) => strike.status === 'active').length,
+        latest_strike_at: (user.strikes || [])
+          .map((strike) => strike.revoked_at || strike.timestamp || strike.expires_at)
+          .filter(Boolean)
+          .sort((left, right) => String(right).localeCompare(String(left)))[0] || null,
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name))
   ), [dashboard.users]);
 
   const submitRequest = async () => {
@@ -243,6 +260,26 @@ export default function StrikePage() {
       dashboard.handleError(error, 'Unable to save the strike role settings.');
     } finally {
       setSavingStrikeRoles(false);
+    }
+  };
+
+  const clearStrikeHistory = async () => {
+    if (!clearHistoryUser) {
+      return;
+    }
+
+    setClearingHistory(true);
+    try {
+      await api.post('/api/strikes/clear-history', {
+        user_id: clearHistoryUser.id,
+      });
+      dashboard.showToast('success', 'Strike history cleared.', `strike-history-clear-${clearHistoryUser.id}`);
+      setClearHistoryUser(null);
+      await dashboard.loadDashboard(true);
+    } catch (error) {
+      dashboard.handleError(error, 'Unable to clear that strike history.');
+    } finally {
+      setClearingHistory(false);
     }
   };
 
@@ -537,6 +574,61 @@ export default function StrikePage() {
         </Card>
       ) : null}
 
+      {canClearHistory ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Strike History Management</CardTitle>
+            <CardDescription>Super Admin only. Clear all strike history for a member and remove every strike role instantly.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {usersWithStrikeHistory.length ? (
+              <Table>
+                <TableHead>
+                  <tr>
+                    <TableHeaderCell>User</TableHeaderCell>
+                    <TableHeaderCell>Total Records</TableHeaderCell>
+                    <TableHeaderCell>Active</TableHeaderCell>
+                    <TableHeaderCell>Latest Update</TableHeaderCell>
+                    <TableHeaderCell className="text-right">Action</TableHeaderCell>
+                  </tr>
+                </TableHead>
+                <TableBody>
+                  {usersWithStrikeHistory.map((user) => (
+                    <TableRow key={`history-${user.id}`}>
+                      <TableCell>
+                        <div className="font-semibold text-[var(--text-main)]">{user.name}</div>
+                        <div className="mt-1 text-sm text-[var(--text-muted)]">
+                          {user.username ? `@${user.username}` : `ID ${user.id}`}
+                        </div>
+                      </TableCell>
+                      <TableCell>{user.strikes.length}</TableCell>
+                      <TableCell>{user.active_count}</TableCell>
+                      <TableCell>{formatDate(user.latest_strike_at, 'No recent activity')}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end">
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => setClearHistoryUser(user)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Clear History
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="surface-soft rounded-[24px] px-5 py-12 text-center text-sm text-[var(--text-muted)]">
+                No strike history is available to clear right now.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Dialog open={requestDialogOpen} onOpenChange={(open) => {
         setRequestDialogOpen(open);
         if (!open) {
@@ -696,6 +788,31 @@ export default function StrikePage() {
         multiple
         placeholder="Search members"
       />
+
+      <Dialog open={Boolean(clearHistoryUser)} onOpenChange={(open) => {
+        if (!open) {
+          setClearHistoryUser(null);
+        }
+      }}>
+        <DialogContent className="w-[min(92vw,520px)]">
+          <DialogHeader>
+            <DialogTitle>Clear Strike History</DialogTitle>
+            <DialogDescription>Super Admin confirmation required.</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <div className="surface-soft rounded-[24px] px-5 py-5 text-sm leading-7 text-[var(--text-muted)]">
+              {clearHistoryUser ? `Are you sure you want to remove ALL strike history for ${clearHistoryUser.name}?` : 'Are you sure you want to remove all strike history?'}
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setClearHistoryUser(null)}>Cancel</Button>
+            <Button variant="danger" loading={clearingHistory} onClick={clearStrikeHistory}>
+              <Trash2 className="h-4 w-4" />
+              Clear History
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

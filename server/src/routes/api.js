@@ -78,6 +78,7 @@ function createApiRouter({
   router.post('/strikes/config', requirePermission(PERMISSIONS.MANAGE_STRIKE_CONFIG, roleService), strikesController.postStrikeConfig);
   router.post('/strikes/add', requirePermission(PERMISSIONS.ISSUE_STRIKES, roleService), strikesController.directIssue);
   router.post('/strikes/revoke', requirePermission(PERMISSIONS.REVOKE_STRIKES, roleService), strikesController.revoke);
+  router.post('/strikes/clear-history', requirePermission(PERMISSIONS.CLEAR_STRIKE_HISTORY, roleService), strikesController.clearHistory);
 
   router.get('/strike-requests', requirePermission(PERMISSIONS.APPLY_STRIKES, roleService), strikesController.listRequests);
   router.post('/strike-requests', requirePermission(PERMISSIONS.APPLY_STRIKES, roleService), strikesController.createRequest);

@@ -145,6 +145,7 @@ function normalizeStrikeData(value) {
         witness_text: String(strike.witness_text || ''),
         request_id: strike.request_id ? String(strike.request_id) : null,
         status: strike.status || 'active',
+        expired_at: strike.expired_at || null,
         revoked_at: strike.revoked_at || null,
         revoked_by: strike.revoked_by ? String(strike.revoked_by) : null,
         revoked_reason: String(strike.revoked_reason || ''),
@@ -575,9 +576,12 @@ class LegacyStoreService {
     const strikes = store.__strikes__ || {};
     const now = Date.now();
     let changed = false;
+    const users = [];
+    let totalExpired = 0;
 
     for (const userId of Object.keys(strikes)) {
       const data = normalizeStrikeData(strikes[userId]);
+      const expiredStrikeIds = [];
       const nextStrikes = data.strikes.map((strike) => {
         if (strike.status !== 'active') {
           return strike;
@@ -585,19 +589,32 @@ class LegacyStoreService {
         const expiry = Date.parse(strike.expires_at);
         if (Number.isFinite(expiry) && expiry < now) {
           changed = true;
+          expiredStrikeIds.push(strike.id);
           return {
             ...strike,
-            status: 'expired'
+            status: 'expired',
+            expired_at: new Date(now).toISOString()
           };
         }
         return strike;
       });
+      const strikeCount = nextStrikes.filter((item) => item.status === 'active').length;
 
       strikes[userId] = {
         ...data,
         strikes: nextStrikes,
-        strike_count: nextStrikes.filter((item) => item.status === 'active').length
+        strike_count: strikeCount
       };
+
+      if (expiredStrikeIds.length) {
+        totalExpired += expiredStrikeIds.length;
+        users.push({
+          user_id: String(userId),
+          strike_count: strikeCount,
+          expired_count: expiredStrikeIds.length,
+          expired_strike_ids: expiredStrikeIds
+        });
+      }
     }
 
     if (changed) {
@@ -605,7 +622,11 @@ class LegacyStoreService {
       this.writeStore(store);
     }
 
-    return changed;
+    return {
+      changed,
+      total_expired: totalExpired,
+      users
+    };
   }
 
   getHealth() {

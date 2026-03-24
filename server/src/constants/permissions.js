@@ -26,6 +26,7 @@ const PERMISSIONS = Object.freeze({
   REVIEW_STRIKES: 'review_strikes',
   ISSUE_STRIKES: 'issue_strikes',
   REVOKE_STRIKES: 'revoke_strikes',
+  CLEAR_STRIKE_HISTORY: 'clear_strike_history',
   MANAGE_STRIKE_CONFIG: 'manage_strike_config',
   RESET_ACTIVITY: 'reset_activity',
   CONFIGURE_FAM_ROLE: 'configure_fam_role',
