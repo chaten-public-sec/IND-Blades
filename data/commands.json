@@ -5,10 +5,10 @@
     "payload": {
       "channel_id": "1346375385297846364"
     },
-    "status": "failed",
+    "status": "done",
     "created_at": "2026-03-22T11:10:51.230Z",
-    "error": "Unable to send preview",
-    "completed_at": "2026-03-22T11:10:54.771391+00:00"
+    "completed_at": "2026-03-25T03:29:41.097020+00:00",
+    "attempts": 1
   },
   {
     "id": "84e2ae0c-596f-4edd-bbf7-9b69becf1ea4",
@@ -16,10 +16,10 @@
     "payload": {
       "channel_id": "1346375385297846364"
     },
-    "status": "failed",
+    "status": "done",
     "created_at": "2026-03-22T11:11:08.324Z",
-    "error": "Unable to send preview",
-    "completed_at": "2026-03-22T11:11:09.760548+00:00"
+    "completed_at": "2026-03-25T03:29:41.097635+00:00",
+    "attempts": 1
   },
   {
     "id": "15e8c1c1-f5c5-435e-abaa-8f70be5402bb",
@@ -27,10 +27,10 @@
     "payload": {
       "channel_id": "1346375385297846364"
     },
-    "status": "failed",
+    "status": "done",
     "created_at": "2026-03-22T11:11:18.925Z",
-    "error": "Unable to send preview",
-    "completed_at": "2026-03-22T11:11:19.768074+00:00"
+    "completed_at": "2026-03-25T03:29:41.098104+00:00",
+    "attempts": 1
   },
   {
     "id": "cd07825e-5cec-405e-8f3d-90337fe17ccd",
@@ -38,10 +38,10 @@
     "payload": {
       "channel_id": "1346375385297846364"
     },
-    "status": "failed",
+    "status": "done",
     "created_at": "2026-03-22T11:11:27.549Z",
-    "error": "Unable to send preview",
-    "completed_at": "2026-03-22T11:11:29.757546+00:00"
+    "completed_at": "2026-03-25T03:29:41.098559+00:00",
+    "attempts": 1
   },
   {
     "id": "907efa88-4202-440e-b1c7-3d0060bc3dfa",
@@ -49,10 +49,10 @@
     "payload": {
       "channel_id": "1346375385297846364"
     },
-    "status": "failed",
+    "status": "done",
     "created_at": "2026-03-22T11:11:29.248Z",
-    "error": "Unable to send preview",
-    "completed_at": "2026-03-22T11:11:29.758903+00:00"
+    "completed_at": "2026-03-25T03:29:41.099138+00:00",
+    "attempts": 1
   },
   {
     "id": "699a824a-fa20-4611-a40a-2ab999bbf88e",
@@ -60,10 +60,10 @@
     "payload": {
       "channel_id": "1346375385297846364"
     },
-    "status": "failed",
+    "status": "done",
     "created_at": "2026-03-22T11:11:46.371Z",
-    "error": "Unable to send preview",
-    "completed_at": "2026-03-22T11:11:49.763485+00:00"
+    "completed_at": "2026-03-25T03:29:41.100089+00:00",
+    "attempts": 1
   },
   {
     "id": "d43f78d4-c8b4-49bd-b420-404cb4ecbf5f",
@@ -71,10 +71,10 @@
     "payload": {
       "channel_id": "1346375385297846364"
     },
-    "status": "failed",
+    "status": "done",
     "created_at": "2026-03-22T11:12:54.974Z",
-    "error": "Unable to send preview",
-    "completed_at": "2026-03-22T11:12:55.560674+00:00"
+    "completed_at": "2026-03-25T03:29:41.100838+00:00",
+    "attempts": 1
   },
   {
     "id": "a90bf44d-e5e7-47ad-a2d3-dcbdf26c5e2f",
@@ -82,10 +82,10 @@
     "payload": {
       "channel_id": "1346375385297846364"
     },
-    "status": "failed",
+    "status": "done",
     "created_at": "2026-03-22T11:16:28.114Z",
-    "error": "Unable to send preview",
-    "completed_at": "2026-03-22T11:16:30.459246+00:00"
+    "completed_at": "2026-03-25T03:29:41.101389+00:00",
+    "attempts": 1
   },
   {
     "id": "44b8ff3c-acd4-4d25-9c1d-978240d2064e",
@@ -309,5 +309,23 @@
     "status": "done",
     "created_at": "2026-03-24T14:24:34.744Z",
     "completed_at": "2026-03-24T14:24:35.513785+00:00"
+  },
+  {
+    "id": "9ae97aba-f0d1-49fa-a4b6-7405eefde6e2",
+    "type": "strike_sync",
+    "payload": {
+      "user_id": "1213688605168635945",
+      "strike_count": 0,
+      "action": "history_cleared",
+      "cleared_by": "1213688605168635945",
+      "cleared_by_name": "Luci\ud835\udd23er",
+      "cleared_count": 1
+    },
+    "status": "done",
+    "attempts": 1,
+    "max_attempts": 5,
+    "available_at": "2026-03-25T04:09:06.520Z",
+    "created_at": "2026-03-25T04:09:06.520Z",
+    "completed_at": "2026-03-25T04:09:10.425239+00:00"
   }
 ]

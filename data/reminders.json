@@ -1,10 +1,21 @@
 {
   "__welcome__": {
     "enabled": true,
-    "channel_id": 1478106773595357185
+    "channel_id": 1478106773595357185,
+    "title": "Welcome to IND Blades",
+    "message": "Welcome to the IND Blades family. Read the rules, grab your roles, and get ready to move with the fam.",
+    "image_url": "",
+    "gif_url": "",
+    "accent_color": "#51A7FF"
   },
   "__activity__": {
-    "users": {},
+    "users": {
+      "1431661540926554114": {
+        "voice_time": 0,
+        "messages": 1,
+        "last_active": 1774410025.088938
+      }
+    },
     "last_reset": 1774180728
   },
   "__logs__": {

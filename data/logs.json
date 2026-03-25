@@ -1,5 +1,38 @@
 [
   {
+    "id": "d161de11-731b-4a9b-be66-90ddb3aefbf0",
+    "message": "Cleared strike history for 1213688605168635945.",
+    "level": "warning",
+    "source": "strikes",
+    "meta": {
+      "user_id": "1213688605168635945",
+      "cleared_count": 1,
+      "cleared_by": "1213688605168635945"
+    },
+    "timestamp": "2026-03-25T04:09:06.525Z"
+  },
+  {
+    "id": "a159ba73-9823-49b2-9e88-17bc0645ca56",
+    "message": "Removed managed website role from 1485191476429197442.",
+    "level": "warning",
+    "source": "management",
+    "meta": {
+      "target_user_id": "1485191476429197442"
+    },
+    "timestamp": "2026-03-25T04:08:38.583Z"
+  },
+  {
+    "id": "1cb93153-2a21-463c-9d34-7a02f40aa05c",
+    "message": "Assigned high_command role to 1485191476429197442.",
+    "level": "info",
+    "source": "management",
+    "meta": {
+      "target_user_id": "1485191476429197442",
+      "role": "high_command"
+    },
+    "timestamp": "2026-03-25T04:08:28.243Z"
+  },
+  {
     "id": "625baa03-77ab-47ec-b96d-ac97f4367dc9",
     "message": "Updated Discord log settings.",
     "level": "info",

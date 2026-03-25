@@ -1,4 +1,9 @@
 {
   "enabled": true,
-  "channel_id": 1478106773595357185
+  "channel_id": 1478106773595357185,
+  "title": "Welcome to IND Blades",
+  "message": "Welcome to the IND Blades family. Read the rules, grab your roles, and get ready to move with the fam.",
+  "image_url": "",
+  "gif_url": "",
+  "accent_color": "#51A7FF"
 }
