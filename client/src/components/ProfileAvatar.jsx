@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { cn } from '../lib/cn';
 import { initials } from '../lib/format';
 
@@ -14,20 +15,32 @@ export default function ProfileAvatar({
   size = 'md',
   className = '',
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const sizeClass = sizeClasses[size] || sizeClasses.md;
   const fallback = initials(name || 'IB');
+  const hasImage = Boolean(avatarUrl) && !imageFailed;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [avatarUrl]);
 
   return (
-    <div className={cn(`flex shrink-0 items-center justify-center overflow-hidden bg-[var(--primary-soft)] font-bold text-[var(--text-main)] ${sizeClass}`, className)}>
-      {avatarUrl ? (
+    <div
+      className={cn(
+        `flex shrink-0 items-center justify-center overflow-hidden border border-[var(--border)] bg-[linear-gradient(135deg,rgba(var(--primary-rgb),0.22),rgba(255,255,255,0.04))] font-bold text-[var(--text-main)] shadow-[0_12px_30px_-20px_rgba(15,23,42,0.75)] ${sizeClass}`,
+        className
+      )}
+    >
+      {hasImage ? (
         <img
           src={avatarUrl}
           alt={name || 'Profile avatar'}
           className="h-full w-full object-cover"
           loading="lazy"
+          onError={() => setImageFailed(true)}
         />
       ) : (
-        <span>{fallback}</span>
+        <span className="text-current">{fallback}</span>
       )}
     </div>
   );

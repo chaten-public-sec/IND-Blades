@@ -229,15 +229,25 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-6 xl:grid-cols-[280px,1fr]">
-          <Card className="h-[calc(100vh-3rem)] min-h-[760px] p-6">
-            <Skeleton className="h-full rounded-[28px]" />
+      <div className="min-h-screen bg-gray-50 px-4 py-8 font-sans dark:bg-gray-950 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 lg:flex-row">
+          <Card className="h-fit min-h-[600px] w-full rounded-md border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 lg:w-64">
+            <Skeleton className="h-full w-full rounded" />
           </Card>
-          <div className="space-y-6">
-            <Card className="p-6"><Skeleton className="h-32 rounded-[28px]" /></Card>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, index) => <Card key={index} className="p-6"><Skeleton className="h-28 rounded-[24px]" /></Card>)}</div>
-            <Card className="p-6"><Skeleton className="h-[420px] rounded-[28px]" /></Card>
+          <div className="flex-1 space-y-6">
+            <Card className="rounded-md border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <Skeleton className="h-24 rounded" />
+            </Card>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Card key={index} className="rounded-md border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <Skeleton className="h-20 rounded" />
+                </Card>
+              ))}
+            </div>
+            <Card className="rounded-md border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <Skeleton className="h-[400px] rounded" />
+            </Card>
           </div>
         </div>
       </div>
@@ -315,68 +325,876 @@ export default function Dashboard() {
   }
 
   const stats = [
-    { label: 'Total Users', value: roster.length, meta: 'Visible in the dashboard', icon: Users },
+    { label: 'Total Users', value: roster.length, meta: 'Visible records', icon: Users },
     { label: 'Active Users', value: roster.filter((item) => item.messages || item.voice_time).length, meta: 'Messages or voice this week', icon: Activity },
-    { label: 'Events', value: events.filter((item) => item.enabled).length, meta: `${events.length} total scheduled`, icon: CalendarDays },
-    { label: 'System Status', value: ping >= 0 ? 'Online' : 'Offline', meta: ping >= 0 ? `${ping}ms response time` : 'Check the API connection', icon: Gauge }
+    { label: 'Scheduled Events', value: events.filter((item) => item.enabled).length, meta: `${events.length} total defined`, icon: CalendarDays },
+    { label: 'System Status', value: ping >= 0 ? 'Online' : 'Offline', meta: ping >= 0 ? `${ping}ms response` : 'Check connection', icon: Gauge }
   ];
 
   return (
     <>
-      <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-6 xl:grid-cols-[280px,1fr]">
-          <aside className="surface sticky top-6 h-fit max-h-[calc(100vh-3rem)] overflow-hidden rounded-[30px] p-5">
-            <div className="space-y-4">
-              <div className="rounded-[26px] border border-white/10 bg-white/6 p-5">
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">IND Blades</p>
-                <p className="mt-2 text-2xl font-semibold text-white">Control Room</p>
-                <p className="mt-2 text-sm leading-7 text-slate-400">A cleaner product shell for the same live bot system.</p>
-              </div>
-              <div className="space-y-2 overflow-y-auto pr-1">{navItems.map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => setActiveTab(item.id)} className={cn('flex w-full items-center gap-3 rounded-[22px] px-4 py-3 text-left text-sm font-semibold transition', activeTab === item.id ? 'bg-cyan-300/12 text-white' : 'text-slate-400 hover:bg-white/6 hover:text-white')}><div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/6"><Icon className="h-4 w-4" /></div>{item.label}</button>; })}</div>
-              <Button variant="secondary" className="mt-4 w-full" onClick={async () => { try { await api.post('/api/logout'); } finally { navigate('/login', { replace: true }); } }}>
-                <LogOut className="h-4 w-4" />
-                Logout
+      <div className="min-h-screen bg-gray-50 px-4 py-8 font-sans dark:bg-gray-950 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 lg:flex-row">
+          <aside className="sticky top-8 flex h-fit max-h-[calc(100vh-4rem)] w-full flex-col rounded-md border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 lg:w-64">
+            <div className="mb-6 border-b border-gray-200 pb-4 dark:border-gray-800">
+              <h2 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-white">IND Blades</h2>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Administration</p>
+            </div>
+            <nav className="flex-1 space-y-1 overflow-y-auto">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
+                      activeTab === item.id
+                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200'
+                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-800">
+              <Button
+                variant="outline"
+                className="w-full justify-start text-gray-700 dark:text-gray-300"
+                onClick={async () => {
+                  try {
+                    await api.post('/api/logout');
+                  } finally {
+                    navigate('/login', { replace: true });
+                  }
+                }}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
               </Button>
             </div>
           </aside>
 
-          <main className="space-y-6">
-            <Card>
-              <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+          <main className="flex-1 space-y-6">
+            <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <CardContent className="flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
                 <div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Badge variant="neutral">IND Blades</Badge>
-                    <Badge variant={ping >= 0 ? 'success' : 'danger'}>{ping >= 0 ? 'API Online' : 'API Offline'}</Badge>
-                    <Badge variant={liveSync ? 'success' : 'warning'}>{liveSync ? 'Real-Time Ready' : 'Syncing'}</Badge>
-                    {refreshing ? <span className="inline-flex items-center gap-2 text-sm text-slate-400"><LoaderCircle className="h-4 w-4 animate-spin" />Refreshing</span> : null}
+                  <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                    {navItems.find(i => i.id === activeTab)?.label || 'Dashboard'}
+                  </h1>
+                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <div className={cn("h-2 w-2 rounded-full", ping >= 0 ? "bg-green-500" : "bg-red-500")} />
+                      API {ping >= 0 ? 'Online' : 'Offline'}
+                    </span>
+                    <span>&bull;</span>
+                    <span className="flex items-center gap-1">
+                      <div className={cn("h-2 w-2 rounded-full", liveSync ? "bg-blue-500" : "bg-yellow-500")} />
+                      {liveSync ? 'Sync Active' : 'Connecting'}
+                    </span>
+                    {refreshing && (
+                      <>
+                        <span>&bull;</span>
+                        <span className="flex items-center gap-1">
+                          <LoaderCircle className="h-3 w-3 animate-spin" /> Fetching
+                        </span>
+                      </>
+                    )}
                   </div>
-                  <p className="mt-3 text-sm uppercase tracking-[0.24em] text-slate-500">Premium dashboard</p>
-                  <h1 className="text-4xl font-semibold text-white">IND Blades</h1>
-                  <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-400">Everything feels cleaner now, but the live routes and sync flow stay intact.</p>
                 </div>
-                <Button variant="outline" onClick={() => loadDashboard(true)}><RefreshCcw className="h-4 w-4" />Refresh</Button>
+                <Button variant="outline" size="sm" onClick={() => loadDashboard(true)}>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Refresh
+                </Button>
               </CardContent>
             </Card>
 
-            {errorMessage ? <div className="rounded-[24px] border border-rose-300/20 bg-rose-300/10 px-5 py-4 text-sm font-medium text-rose-100">{errorMessage}</div> : null}
+            {errorMessage && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-200">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="font-medium">Error:</span> {errorMessage}
+                </div>
+              </div>
+            )}
 
-            {activeTab === 'dashboard' ? <div className="space-y-6"><Card className="overflow-hidden"><div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]"><div className="space-y-4 p-6 sm:p-8"><p className="text-sm uppercase tracking-[0.24em] text-slate-500">Operations overview</p><h2 className="text-4xl font-semibold text-white">Run the whole community from one polished surface.</h2><p className="max-w-2xl text-sm leading-7 text-slate-400">Events, welcome flows, activity, logs, and live sync are all aligned inside one consistent Tailwind shell.</p></div><div className="relative min-h-[260px] overflow-hidden border-t border-white/10 lg:border-l lg:border-t-0"><img src={heroImage} alt="IND Blades" className="h-full w-full object-cover opacity-75" /><div className="absolute inset-0 bg-gradient-to-br from-slate-950/15 via-slate-950/35 to-slate-950/85" /></div></div></Card><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{stats.map((item) => { const Icon = item.icon; return <Card key={item.label}><CardContent className="flex items-start justify-between gap-4 p-6"><div><p className="text-xs uppercase tracking-[0.24em] text-slate-500">{item.label}</p><p className="mt-3 text-3xl font-semibold text-white">{item.value}</p><p className="mt-2 text-sm text-slate-400">{item.meta}</p></div><div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-cyan-100"><Icon className="h-5 w-5" /></div></CardContent></Card>; })}</div></div> : null}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {stats.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Card key={item.label} className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                        <CardContent className="p-5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{item.label}</p>
+                            <Icon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                          </div>
+                          <p className="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">{item.value}</p>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{item.meta}</p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+                <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <div className="flex flex-col lg:flex-row">
+                    <div className="flex-1 p-6 sm:p-8">
+                      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">System Overview</h2>
+                      <p className="mt-4 text-gray-600 dark:text-gray-300 leading-relaxed">
+                        Welcome to the IND Blades administrative interface. This unified panel provides direct control over server events, user analytics, automated welcome procedures, and detailed activity logs.
+                      </p>
+                      <p className="mt-2 text-gray-600 dark:text-gray-300 leading-relaxed">
+                        All changes made here are synchronized in real-time with your active bot instances and Discord servers.
+                      </p>
+                    </div>
+                    <div className="relative hidden w-1/3 min-w-[300px] border-l border-gray-200 dark:border-gray-800 lg:block">
+                      <img src={heroImage} alt="Dashboard Illustration" className="h-full w-full object-cover opacity-80 dark:opacity-50 grayscale" />
+                      <div className="absolute inset-0 bg-gray-900/10 dark:bg-gray-900/60" />
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
 
-            {activeTab === 'events' ? <div className="space-y-6"><Card><CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between"><div><p className="text-sm uppercase tracking-[0.24em] text-slate-500">Events</p><h2 className="text-3xl font-semibold text-white">Smooth event control</h2></div><div className="flex flex-col gap-3 sm:flex-row"><div className="relative min-w-[240px]"><Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><input value={eventSearch} onChange={(event) => setEventSearch(event.target.value)} placeholder="Search events" className="surface-soft h-11 w-full rounded-2xl pl-11 pr-4 text-sm text-slate-100 placeholder:text-slate-500" /></div><Button onClick={() => { setEventForm({ ...emptyEventForm, targetId: firstChannelId || firstRoleId || firstUserId, mentionRoleId: firstRoleId || '' }); setEventDialogOpen(true); }}><Plus className="h-4 w-4" />Create Event</Button></div></CardContent></Card><Card><CardHeader><CardTitle>Event list</CardTitle><CardDescription>Everything here stays in sync with the bot.</CardDescription></CardHeader><CardContent>{filteredEvents.length ? <Table><TableHead><tr><TableHeaderCell>Event</TableHeaderCell><TableHeaderCell>Schedule</TableHeaderCell><TableHeaderCell>Target</TableHeaderCell><TableHeaderCell>Status</TableHeaderCell><TableHeaderCell className="text-right">Actions</TableHeaderCell></tr></TableHead><TableBody>{filteredEvents.map((item) => <TableRow key={item.id}><TableCell><button onClick={() => setSelectedEvent(item)} className="text-left font-semibold text-white transition hover:text-cyan-100">{item.desc}<div className="mt-1 text-sm text-slate-400">{item.delivery_mode === 'dm' ? 'DM' : 'Server'} • {item.daily ? 'Daily' : 'One time'}</div></button></TableCell><TableCell>{item.time}</TableCell><TableCell>{targetLabel(item)}</TableCell><TableCell><Badge variant={item.enabled ? 'success' : 'danger'}>{item.enabled ? 'On' : 'Off'}</Badge></TableCell><TableCell className="text-right"><div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setSelectedEvent(item)}><Eye className="h-4 w-4" />View</Button><Button variant="ghost" size="sm" onClick={() => { setEventForm(buildEventForm(item)); setEventDialogOpen(true); }}><Pencil className="h-4 w-4" />Edit</Button><Button variant="ghost" size="sm" onClick={() => quickAction(() => api.post('/api/events/toggle', { id: item.id, enabled: !item.enabled }))}>{item.enabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{item.enabled ? 'Turn Off' : 'Turn On'}</Button><Button variant="ghost" size="sm" className="text-rose-200 hover:bg-rose-300/10 hover:text-rose-100" onClick={() => setDeleteEvent(item)}><Trash2 className="h-4 w-4" />Delete</Button></div></TableCell></TableRow>)}</TableBody></Table> : <div className="rounded-[24px] border border-white/10 bg-white/4 p-8 text-center text-slate-400">No events found.</div>}</CardContent></Card></div> : null}
+            {activeTab === 'events' && (
+              <div className="space-y-6">
+                <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="relative w-full sm:w-72">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                      <input
+                        value={eventSearch}
+                        onChange={(e) => setEventSearch(e.target.value)}
+                        placeholder="Search events..."
+                        className="h-9 w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setEventForm({ ...emptyEventForm, targetId: firstChannelId || firstRoleId || firstUserId, mentionRoleId: firstRoleId || '' });
+                        setEventDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Event
+                    </Button>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <div className="overflow-x-auto">
+                    {filteredEvents.length ? (
+                      <table className="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+                        <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/50">
+                          <tr>
+                            <th className="px-4 py-3 font-medium text-gray-900 dark:text-white">Event Name</th>
+                            <th className="px-4 py-3 font-medium text-gray-900 dark:text-white">Schedule</th>
+                            <th className="px-4 py-3 font-medium text-gray-900 dark:text-white">Target</th>
+                            <th className="px-4 py-3 font-medium text-gray-900 dark:text-white">Status</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                          {filteredEvents.map((item) => (
+                            <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                              <td className="px-4 py-3">
+                                <button onClick={() => setSelectedEvent(item)} className="font-medium text-blue-600 hover:underline dark:text-blue-400">
+                                  {item.desc}
+                                </button>
+                                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                  {item.delivery_mode === 'dm' ? 'Direct Message' : 'Server Channel'} &bull; {item.daily ? 'Daily' : 'One-time'}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">{item.time}</td>
+                              <td className="px-4 py-3">{targetLabel(item)}</td>
+                              <td className="px-4 py-3">
+                                <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", item.enabled ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300")}>
+                                  {item.enabled ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="ghost" size="sm" onClick={() => { setEventForm(buildEventForm(item)); setEventDialogOpen(true); }}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => quickAction(() => api.post('/api/events/toggle', { id: item.id, enabled: !item.enabled }))}>
+                                    {item.enabled ? <Pause className="h-4 w-4 text-gray-500" /> : <Play className="h-4 w-4 text-gray-500" />}
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 dark:text-red-400" onClick={() => setDeleteEvent(item)}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">No events found matching your criteria.</div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
 
-            {activeTab === 'welcome' ? <div className="grid gap-6 xl:grid-cols-[0.9fr,1.1fr]"><Card><CardHeader><CardTitle>Welcome settings</CardTitle><CardDescription>Choose the channel and preview the same embed style members will get.</CardDescription></CardHeader><CardContent className="space-y-5"><div className="surface-soft flex items-center justify-between gap-4 rounded-[26px] p-5"><div><p className="text-sm font-semibold text-white">Welcome system</p><p className="mt-1 text-sm text-slate-400">Turn the welcome flow on or off.</p></div><Button variant={welcome.enabled ? 'secondary' : 'default'} loading={welcomeSaving} onClick={async () => { setWelcomeSaving(true); try { const response = await api.post('/api/welcome/toggle', { enabled: !welcome.enabled }); setWelcome(response.data?.config || welcome); setWelcomeChannelDraft(response.data?.config?.channel_id || welcomeChannelDraft); showToast(response.data?.config?.enabled ? 'Turned on' : 'Turned off'); } catch (error) { handleError(error, 'Unable to update welcome settings.'); } finally { setWelcomeSaving(false); } }}>{welcome.enabled ? 'Turn Off' : 'Turn On'}</Button></div><div className="space-y-2"><label className="text-sm font-semibold text-slate-200">Welcome channel</label><SelectField value={welcomeChannelDraft} onChange={(event) => setWelcomeChannelDraft(event.target.value)}><option value="">Choose a channel</option>{channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField></div><div className="flex flex-col gap-3 sm:flex-row"><Button variant="secondary" loading={welcomeSaving} onClick={async () => { setWelcomeSaving(true); try { const response = await api.post('/api/welcome/channel', { channel_id: String(welcomeChannelDraft || '').trim() || null }); setWelcome(response.data?.config || welcome); setWelcomeChannelDraft(response.data?.config?.channel_id || welcomeChannelDraft); showToast('Saved'); } catch (error) { handleError(error, 'Unable to save the welcome channel.'); } finally { setWelcomeSaving(false); } }}>Save</Button><Button variant="outline" loading={previewingWelcome} onClick={async () => { setPreviewingWelcome(true); try { if (welcomeChannelDraft !== (welcome.channel_id || '')) { await api.post('/api/welcome/channel', { channel_id: String(welcomeChannelDraft || '').trim() || null }); } await api.post('/api/welcome/preview'); showToast('Preview sent'); } catch (error) { handleError(error, 'Unable to send the welcome preview.'); } finally { setPreviewingWelcome(false); } }}><Send className="h-4 w-4" />Preview Welcome</Button></div></CardContent></Card><Card className="overflow-hidden"><div className="relative h-52 overflow-hidden border-b border-white/10"><img src={heroImage} alt="Welcome preview" className="h-full w-full object-cover opacity-70" /><div className="absolute inset-0 bg-gradient-to-br from-slate-950/20 via-slate-950/40 to-slate-950/85" /></div><CardContent className="space-y-4 p-6 text-sm leading-7 text-slate-300"><p className="font-semibold text-cyan-100">━━━━━━━━━━━━━━━━━━</p><p className="text-lg font-semibold text-white">Welcome to IND Blades</p><p className="font-semibold text-cyan-100">━━━━━━━━━━━━━━━━━━</p><p>Hello New Member,</p><p>Welcome to <span className="font-semibold text-white">IND Blades Family</span> ⚔️</p><p>⚡ Check out the channels and introduce yourself.</p><p>📌 Make sure to read the rules and have fun.</p><p className="text-xs uppercase tracking-[0.24em] text-slate-500">Preview channel: {channelMap.get(String(welcomeChannelDraft || welcome.channel_id || '')) || 'Choose a channel'}</p></CardContent></Card></div> : null}
-            {activeTab === 'users' ? <Card><CardHeader><CardTitle>Member directory</CardTitle><CardDescription>Search by name and open a focused user view.</CardDescription></CardHeader><CardContent className="space-y-4"><div className="relative max-w-sm"><Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Search users" className="surface-soft h-11 w-full rounded-2xl pl-11 pr-4 text-sm text-slate-100 placeholder:text-slate-500" /></div>{filteredUsers.length ? <Table><TableHead><tr><TableHeaderCell>User</TableHeaderCell><TableHeaderCell>Roles</TableHeaderCell><TableHeaderCell>Voice Time</TableHeaderCell><TableHeaderCell>Messages</TableHeaderCell><TableHeaderCell className="text-right">View</TableHeaderCell></tr></TableHead><TableBody>{filteredUsers.map((item) => <TableRow key={item.id}><TableCell><div className="font-semibold text-white">{userLabel(item)}</div><div className="text-sm text-slate-400">{item.username ? `@${item.username}` : 'Member profile'}</div></TableCell><TableCell>{item.roles?.length ? item.roles.slice(0, 3).map((roleId) => roleMap.get(String(roleId)) || 'Role').join(', ') : 'No roles'}</TableCell><TableCell>{formatDuration(item.voice_time)}</TableCell><TableCell>{item.messages}</TableCell><TableCell className="text-right"><Button variant="ghost" size="sm" onClick={() => setSelectedUser(item)}><Eye className="h-4 w-4" />View</Button></TableCell></TableRow>)}</TableBody></Table> : <div className="rounded-[24px] border border-white/10 bg-white/4 p-8 text-center text-slate-400">No users found.</div>}</CardContent></Card> : null}
-            {activeTab === 'activity' ? <div className="space-y-6"><Card><CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between"><div><p className="text-sm uppercase tracking-[0.24em] text-slate-500">Activity</p><h2 className="text-3xl font-semibold text-white">Weekly leaderboard</h2></div><Button variant="outline" loading={resettingWeek} onClick={async () => { setResettingWeek(true); try { await api.post('/api/activity/reset'); showToast('Updated'); await loadDashboard(true); } catch (error) { handleError(error, 'Unable to reset this week.'); } finally { setResettingWeek(false); } }}><RefreshCcw className="h-4 w-4" />Reset Week</Button></CardContent></Card><Card><CardContent className="pt-6">{leaderboard.length ? <Table><TableHead><tr><TableHeaderCell>Rank</TableHeaderCell><TableHeaderCell>User</TableHeaderCell><TableHeaderCell>Voice Time</TableHeaderCell><TableHeaderCell>Messages</TableHeaderCell><TableHeaderCell>Score</TableHeaderCell></tr></TableHead><TableBody>{leaderboard.map((item, index) => <TableRow key={item.id}><TableCell className="font-semibold text-cyan-100">#{index + 1}</TableCell><TableCell><button onClick={() => setSelectedUser(item)} className="font-semibold text-white transition hover:text-cyan-100">{userLabel(item)}</button></TableCell><TableCell>{formatDuration(item.voice_time)}</TableCell><TableCell>{item.messages}</TableCell><TableCell>{score(item)}</TableCell></TableRow>)}</TableBody></Table> : <div className="rounded-[24px] border border-white/10 bg-white/4 p-8 text-center text-slate-400">No activity yet.</div>}</CardContent></Card></div> : null}
-            {activeTab === 'logs' ? <div className="grid gap-6 xl:grid-cols-[0.9fr,1.1fr]"><Card><CardHeader><CardTitle>Server log settings</CardTitle><CardDescription>Choose where Discord log messages should go.</CardDescription></CardHeader><CardContent className="space-y-4"><div className="surface-soft flex items-center justify-between gap-4 rounded-[26px] p-5"><div><p className="text-sm font-semibold text-white">Server logs</p><p className="mt-1 text-sm text-slate-400">Turn Discord log delivery on or off.</p></div><Button variant={logSettingsDraft.enabled ? 'secondary' : 'default'} onClick={() => setLogSettingsDraft((current) => ({ ...current, enabled: !current.enabled }))}>{logSettingsDraft.enabled ? 'Turn Off' : 'Turn On'}</Button></div><SelectField value={logSettingsDraft.moderation_channel_id || ''} onChange={(event) => setLogSettingsDraft((current) => ({ ...current, moderation_channel_id: event.target.value }))}><option value="">Moderation logs</option>{channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField><SelectField value={logSettingsDraft.event_channel_id || ''} onChange={(event) => setLogSettingsDraft((current) => ({ ...current, event_channel_id: event.target.value }))}><option value="">Event logs</option>{channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField><SelectField value={logSettingsDraft.system_channel_id || ''} onChange={(event) => setLogSettingsDraft((current) => ({ ...current, system_channel_id: event.target.value }))}><option value="">System logs</option>{channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField><Button variant="secondary" loading={savingLogs} onClick={async () => { setSavingLogs(true); try { await api.post('/api/log-settings', { enabled: logSettingsDraft.enabled, moderation_channel_id: String(logSettingsDraft.moderation_channel_id || '').trim() || null, event_channel_id: String(logSettingsDraft.event_channel_id || '').trim() || null, system_channel_id: String(logSettingsDraft.system_channel_id || '').trim() || null }); showToast('Saved'); await loadDashboard(true); } catch (error) { handleError(error, 'Unable to save log settings.'); } finally { setSavingLogs(false); } }}>Save</Button></CardContent></Card><Card><CardHeader><CardTitle>Dashboard logs</CardTitle><CardDescription>Filter recent dashboard activity.</CardDescription></CardHeader><CardContent className="space-y-4"><div className="grid gap-3 md:grid-cols-[1fr,0.4fr]"><div className="relative"><Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><input value={logSearch} onChange={(event) => setLogSearch(event.target.value)} placeholder="Search logs" className="surface-soft h-11 w-full rounded-2xl pl-11 pr-4 text-sm text-slate-100 placeholder:text-slate-500" /></div><SelectField value={logSource} onChange={(event) => setLogSource(event.target.value)}><option value="all">All sources</option>{Array.from(new Set(logs.map((item) => String(item.source || 'system')))).map((item) => <option key={item} value={item}>{item}</option>)}</SelectField></div><div className="space-y-3">{filteredLogs.slice(0, 14).map((item) => <div key={item.id} className="surface-soft rounded-[24px] p-4"><div className="flex flex-wrap items-center gap-3"><Badge variant={item.level === 'warning' ? 'warning' : 'default'}>{item.level || 'info'}</Badge><span className="text-xs uppercase tracking-[0.22em] text-slate-500">{item.source || 'system'}</span><span className="ml-auto text-xs text-slate-500">{formatDate(item.timestamp)}</span></div><p className="mt-3 text-sm leading-7 text-slate-300">{item.message}</p></div>)}</div></CardContent></Card></div> : null}
+            {activeTab === 'welcome' && (
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <CardHeader className="border-b border-gray-200 pb-4 dark:border-gray-800">
+                    <CardTitle className="text-lg">Configuration</CardTitle>
+                    <CardDescription>Manage automated server greetings.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6 pt-6">
+                    <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-800/50">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Welcome Module</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Currently {welcome.enabled ? 'active' : 'disabled'}.</p>
+                      </div>
+                      <Button
+                        variant={welcome.enabled ? 'outline' : 'default'}
+                        loading={welcomeSaving}
+                        onClick={async () => {
+                          setWelcomeSaving(true);
+                          try {
+                            const response = await api.post('/api/welcome/toggle', { enabled: !welcome.enabled });
+                            setWelcome(response.data?.config || welcome);
+                            setWelcomeChannelDraft(response.data?.config?.channel_id || welcomeChannelDraft);
+                            showToast(response.data?.config?.enabled ? 'Module Enabled' : 'Module Disabled');
+                          } catch (error) {
+                            handleError(error, 'Failed to toggle welcome module.');
+                          } finally {
+                            setWelcomeSaving(false);
+                          }
+                        }}
+                      >
+                        {welcome.enabled ? 'Disable' : 'Enable'}
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Target Channel</label>
+                      <select
+                        value={welcomeChannelDraft}
+                        onChange={(e) => setWelcomeChannelDraft(e.target.value)}
+                        className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      >
+                        <option value="">Select a channel...</option>
+                        {channels.map((item) => (
+                          <option key={item.id} value={item.id}>{item.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <Button
+                        loading={welcomeSaving}
+                        onClick={async () => {
+                          setWelcomeSaving(true);
+                          try {
+                            const response = await api.post('/api/welcome/channel', { channel_id: String(welcomeChannelDraft || '').trim() || null });
+                            setWelcome(response.data?.config || welcome);
+                            setWelcomeChannelDraft(response.data?.config?.channel_id || welcomeChannelDraft);
+                            showToast('Configuration Saved');
+                          } catch (error) {
+                            handleError(error, 'Failed to save channel configuration.');
+                          } finally {
+                            setWelcomeSaving(false);
+                          }
+                        }}
+                      >
+                        Save Changes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        loading={previewingWelcome}
+                        onClick={async () => {
+                          setPreviewingWelcome(true);
+                          try {
+                            if (welcomeChannelDraft !== (welcome.channel_id || '')) {
+                              await api.post('/api/welcome/channel', { channel_id: String(welcomeChannelDraft || '').trim() || null });
+                            }
+                            await api.post('/api/welcome/preview');
+                            showToast('Preview dispatched to channel.');
+                          } catch (error) {
+                            handleError(error, 'Failed to dispatch preview.');
+                          } finally {
+                            setPreviewingWelcome(false);
+                          }
+                        }}
+                      >
+                        <Send className="mr-2 h-4 w-4" />
+                        Send Test Message
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <CardHeader className="border-b border-gray-200 pb-4 dark:border-gray-800">
+                    <CardTitle className="text-lg">Message Preview</CardTitle>
+                    <CardDescription>Example of the automated greeting.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="border-b border-gray-200 bg-gray-100 p-4 dark:border-gray-800 dark:bg-gray-800/50">
+                      <div className="rounded border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                        <p className="mb-2 text-sm font-bold text-blue-600 dark:text-blue-400">Welcome to IND Blades</p>
+                        <div className="space-y-2 text-sm text-gray-800 dark:text-gray-200">
+                          <p>Hello New Member,</p>
+                          <p>Welcome to <strong>IND Blades Family</strong> ⚔️</p>
+                          <p>⚡ Check out the channels and introduce yourself.</p>
+                          <p>📌 Make sure to read the rules and have fun.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 text-xs text-gray-500 dark:text-gray-400">
+                      Currently mapped to: {channelMap.get(String(welcomeChannelDraft || welcome.channel_id || '')) || 'None selected'}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === 'users' && (
+              <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                <CardHeader className="border-b border-gray-200 pb-4 dark:border-gray-800">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle className="text-lg">User Directory</CardTitle>
+                      <CardDescription>Manage and view server members.</CardDescription>
+                    </div>
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                      <input
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        placeholder="Search users..."
+                        className="h-9 w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <div className="overflow-x-auto">
+                  {filteredUsers.length ? (
+                    <table className="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+                      <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/50">
+                        <tr>
+                          <th className="px-6 py-3 font-medium text-gray-900 dark:text-white">Member</th>
+                          <th className="px-6 py-3 font-medium text-gray-900 dark:text-white">Primary Roles</th>
+                          <th className="px-6 py-3 font-medium text-gray-900 dark:text-white">Voice Activity</th>
+                          <th className="px-6 py-3 font-medium text-gray-900 dark:text-white">Messages</th>
+                          <th className="px-6 py-3 text-right font-medium text-gray-900 dark:text-white">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                        {filteredUsers.map((item) => (
+                          <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                            <td className="px-6 py-3">
+                              <div className="font-medium text-gray-900 dark:text-white">{userLabel(item)}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">{item.username ? `@${item.username}` : 'ID: ' + item.id}</div>
+                            </td>
+                            <td className="px-6 py-3">
+                              {item.roles?.length ? item.roles.slice(0, 2).map((roleId) => roleMap.get(String(roleId)) || 'Role').join(', ') + (item.roles.length > 2 ? '...' : '') : <span className="text-gray-400">None</span>}
+                            </td>
+                            <td className="px-6 py-3">{formatDuration(item.voice_time)}</td>
+                            <td className="px-6 py-3">{item.messages}</td>
+                            <td className="px-6 py-3 text-right">
+                              <Button variant="outline" size="sm" onClick={() => setSelectedUser(item)}>
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">No members found.</div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {activeTab === 'activity' && (
+              <div className="space-y-6">
+                <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <CardContent className="flex items-center justify-between p-5">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Leaderboard</h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Top contributors based on calculated activity score.</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      loading={resettingWeek}
+                      onClick={async () => {
+                        if (!window.confirm("Are you sure you want to reset all activity metrics?")) return;
+                        setResettingWeek(true);
+                        try {
+                          await api.post('/api/activity/reset');
+                          showToast('Metrics reset successfully.');
+                          await loadDashboard(true);
+                        } catch (error) {
+                          handleError(error, 'Failed to reset metrics.');
+                        } finally {
+                          setResettingWeek(false);
+                        }
+                      }}
+                    >
+                      Reset Metrics
+                    </Button>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <div className="overflow-x-auto">
+                    {leaderboard.length ? (
+                      <table className="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+                        <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/50">
+                          <tr>
+                            <th className="px-6 py-3 font-medium text-gray-900 dark:text-white">Rank</th>
+                            <th className="px-6 py-3 font-medium text-gray-900 dark:text-white">Member</th>
+                            <th className="px-6 py-3 font-medium text-gray-900 dark:text-white">Voice Duration</th>
+                            <th className="px-6 py-3 font-medium text-gray-900 dark:text-white">Message Count</th>
+                            <th className="px-6 py-3 font-medium text-gray-900 dark:text-white">Total Score</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                          {leaderboard.map((item, index) => (
+                            <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                              <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{index + 1}</td>
+                              <td className="px-6 py-3">
+                                <button onClick={() => setSelectedUser(item)} className="font-medium text-blue-600 hover:underline dark:text-blue-400">
+                                  {userLabel(item)}
+                                </button>
+                              </td>
+                              <td className="px-6 py-3">{formatDuration(item.voice_time)}</td>
+                              <td className="px-6 py-3">{item.messages}</td>
+                              <td className="px-6 py-3 font-semibold text-gray-900 dark:text-white">{score(item)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">No recorded activity.</div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === 'logs' && (
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <CardHeader className="border-b border-gray-200 pb-4 dark:border-gray-800">
+                    <CardTitle className="text-lg">Logging Configuration</CardTitle>
+                    <CardDescription>Route system events to Discord channels.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-6">
+                    <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-800/50">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">Global Logging</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Master switch for all log outputs.</p>
+                      </div>
+                      <Button
+                        variant={logSettingsDraft.enabled ? 'outline' : 'default'}
+                        onClick={() => setLogSettingsDraft((curr) => ({ ...curr, enabled: !curr.enabled }))}
+                      >
+                        {logSettingsDraft.enabled ? 'Disable' : 'Enable'}
+                      </Button>
+                    </div>
+                    <div className="space-y-3 pt-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Moderation Logs</label>
+                      <select
+                        value={logSettingsDraft.moderation_channel_id || ''}
+                        onChange={(e) => setLogSettingsDraft((curr) => ({ ...curr, moderation_channel_id: e.target.value }))}
+                        className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      >
+                        <option value="">None</option>
+                        {channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Event Logs</label>
+                      <select
+                        value={logSettingsDraft.event_channel_id || ''}
+                        onChange={(e) => setLogSettingsDraft((curr) => ({ ...curr, event_channel_id: e.target.value }))}
+                        className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      >
+                        <option value="">None</option>
+                        {channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">System Logs</label>
+                      <select
+                        value={logSettingsDraft.system_channel_id || ''}
+                        onChange={(e) => setLogSettingsDraft((curr) => ({ ...curr, system_channel_id: e.target.value }))}
+                        className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      >
+                        <option value="">None</option>
+                        {channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="pt-2">
+                      <Button
+                        loading={savingLogs}
+                        onClick={async () => {
+                          setSavingLogs(true);
+                          try {
+                            await api.post('/api/log-settings', {
+                              enabled: logSettingsDraft.enabled,
+                              moderation_channel_id: String(logSettingsDraft.moderation_channel_id || '').trim() || null,
+                              event_channel_id: String(logSettingsDraft.event_channel_id || '').trim() || null,
+                              system_channel_id: String(logSettingsDraft.system_channel_id || '').trim() || null
+                            });
+                            showToast('Log routing updated.');
+                            await loadDashboard(true);
+                          } catch (error) {
+                            handleError(error, 'Failed to save log configuration.');
+                          } finally {
+                            setSavingLogs(false);
+                          }
+                        }}
+                      >
+                        Save Configuration
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <CardHeader className="border-b border-gray-200 pb-4 dark:border-gray-800">
+                    <CardTitle className="text-lg">System Output</CardTitle>
+                    <CardDescription>Recent dashboard and internal events.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-4">
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <input
+                          value={logSearch}
+                          onChange={(e) => setLogSearch(e.target.value)}
+                          placeholder="Search entries..."
+                          className="h-9 w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500"
+                        />
+                      </div>
+                      <select
+                        value={logSource}
+                        onChange={(e) => setLogSource(e.target.value)}
+                        className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 sm:w-40"
+                      >
+                        <option value="all">All Sources</option>
+                        {Array.from(new Set(logs.map((item) => String(item.source || 'system')))).map((item) => (
+                          <option key={item} value={item}>{item.toUpperCase()}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      {filteredLogs.length ? filteredLogs.slice(0, 14).map((item) => (
+                        <div key={item.id} className="rounded border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-800 dark:bg-gray-800/50">
+                          <div className="mb-1 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "rounded px-1.5 py-0.5 text-xs font-medium uppercase",
+                                item.level === 'warning' ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500" :
+                                  item.level === 'error' ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-500" :
+                                    "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                              )}>
+                                {item.level || 'info'}
+                              </span>
+                              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">{item.source || 'system'}</span>
+                            </div>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(item.timestamp)}</span>
+                          </div>
+                          <p className="text-gray-700 dark:text-gray-300">{item.message}</p>
+                        </div>
+                      )) : (
+                        <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">No logs match criteria.</div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </main>
         </div>
       </div>
 
-      <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}><DialogContent className="w-[min(96vw,760px)]"><DialogHeader><DialogTitle>{eventForm.id ? 'Edit event' : 'Create event'}</DialogTitle><DialogDescription>Set the schedule and where the event should go.</DialogDescription></DialogHeader><DialogBody><div className="grid gap-4 md:grid-cols-2"><input value={eventForm.name} onChange={(event) => updateEventField('name', event.target.value)} placeholder="Event name" className="surface-soft h-11 rounded-2xl px-4 text-sm text-slate-100 placeholder:text-slate-500" /><TimeInput value={eventForm.time} onChange={(event) => updateEventField('time', event.target.value)} /><SelectField value={eventForm.mode} onChange={(event) => updateEventField('mode', event.target.value)}><option value="server">Server</option><option value="dm">DM</option></SelectField><SelectField value={eventForm.enabled ? 'on' : 'off'} onChange={(event) => updateEventField('enabled', event.target.value === 'on')}><option value="on">On</option><option value="off">Off</option></SelectField><SelectField value={eventForm.targetType} onChange={(event) => updateEventField('targetType', event.target.value)}>{eventForm.mode === 'server' ? <><option value="channel">Channel</option><option value="role">Role</option></> : <><option value="user">User</option><option value="role">Role</option></>}</SelectField><SelectField value={eventForm.daily ? 'daily' : 'once'} onChange={(event) => updateEventField('daily', event.target.value === 'daily')}><option value="once">One time</option><option value="daily">Daily</option></SelectField></div>{eventForm.targetType === 'channel' ? <SelectField className="mt-4" value={eventForm.targetId} onChange={(event) => updateEventField('targetId', event.target.value)}><option value="">Choose a channel</option>{channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField> : null}{eventForm.targetType === 'role' ? <SelectField className="mt-4" value={eventForm.targetId} onChange={(event) => updateEventField('targetId', event.target.value)}><option value="">Choose a role</option>{roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField> : null}{eventForm.targetType === 'user' ? <div className="mt-4 space-y-3"><input value={eventSearchUsers} onChange={(event) => setEventSearchUsers(event.target.value)} placeholder="Search users" className="surface-soft h-11 w-full rounded-2xl px-4 text-sm text-slate-100 placeholder:text-slate-500" /><div className="surface-soft max-h-52 space-y-2 overflow-y-auto rounded-[24px] p-2">{roster.filter((item) => `${userLabel(item)} ${item.username || ''}`.toLowerCase().includes(eventSearchUsers.trim().toLowerCase())).slice(0, 8).map((item) => <button key={item.id} onClick={() => updateEventField('targetId', String(item.id))} className={cn('flex w-full items-center justify-between rounded-[18px] px-4 py-3 text-left text-sm transition', String(eventForm.targetId) === String(item.id) ? 'bg-cyan-300/12 text-white' : 'text-slate-300 hover:bg-white/6')}><span>{userLabel(item)}</span>{String(eventForm.targetId) === String(item.id) ? <CheckCircle2 className="h-4 w-4 text-cyan-100" /> : null}</button>)}</div></div> : null}{eventForm.mode === 'server' && eventForm.targetType === 'channel' ? <SelectField className="mt-4" value={eventForm.mentionRoleId || ''} onChange={(event) => updateEventField('mentionRoleId', event.target.value)}><option value="">Mention role</option>{roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField> : null}</DialogBody><DialogFooter><Button variant="ghost" onClick={() => setEventDialogOpen(false)}>Cancel</Button><Button loading={savingEvent} onClick={saveEvent}>Save</Button></DialogFooter></DialogContent></Dialog>
-      <Dialog open={Boolean(selectedEvent)} onOpenChange={(open) => !open && setSelectedEvent(null)}><DialogContent className="w-[min(96vw,640px)]"><DialogHeader><DialogTitle>{selectedEvent?.desc || 'Event details'}</DialogTitle><DialogDescription>Live event data from the current store.</DialogDescription></DialogHeader><DialogBody>{selectedEvent ? <div className="grid gap-4 md:grid-cols-2"><div className="surface-soft rounded-[24px] p-5"><p className="text-xs uppercase tracking-[0.22em] text-slate-500">Mode</p><p className="mt-2 text-xl font-semibold text-white">{selectedEvent.delivery_mode === 'dm' ? 'DM' : 'Server'}</p></div><div className="surface-soft rounded-[24px] p-5"><p className="text-xs uppercase tracking-[0.22em] text-slate-500">Status</p><p className="mt-2 text-xl font-semibold text-white">{selectedEvent.enabled ? 'On' : 'Off'}</p></div><div className="surface-soft rounded-[24px] p-5"><p className="text-xs uppercase tracking-[0.22em] text-slate-500">Target</p><p className="mt-2 text-xl font-semibold text-white">{targetLabel(selectedEvent)}</p></div><div className="surface-soft rounded-[24px] p-5"><p className="text-xs uppercase tracking-[0.22em] text-slate-500">Last triggered</p><p className="mt-2 text-xl font-semibold text-white">{formatDate(selectedEvent.last_reminded_date || selectedEvent.last_vote_date || selectedEvent.event_date)}</p></div></div> : null}</DialogBody><DialogFooter><Button variant="ghost" onClick={() => setSelectedEvent(null)}>Close</Button></DialogFooter></DialogContent></Dialog>
-      <Dialog open={Boolean(selectedUser)} onOpenChange={(open) => !open && setSelectedUser(null)}><DialogContent className="w-[min(96vw,640px)]"><DialogHeader><DialogTitle>{selectedUser ? userLabel(selectedUser) : 'User details'}</DialogTitle><DialogDescription>Roles, rank, voice time, and messages in one place.</DialogDescription></DialogHeader><DialogBody>{selectedUser ? <div className="space-y-4"><div className="grid gap-4 md:grid-cols-3"><div className="surface-soft rounded-[24px] p-5"><p className="text-xs uppercase tracking-[0.22em] text-slate-500">Voice Time</p><p className="mt-2 text-xl font-semibold text-white">{formatDuration(selectedUser.voice_time)}</p></div><div className="surface-soft rounded-[24px] p-5"><p className="text-xs uppercase tracking-[0.22em] text-slate-500">Messages</p><p className="mt-2 text-xl font-semibold text-white">{selectedUser.messages}</p></div><div className="surface-soft rounded-[24px] p-5"><p className="text-xs uppercase tracking-[0.22em] text-slate-500">Rank</p><p className="mt-2 text-xl font-semibold text-white">{Math.max(leaderboard.findIndex((item) => String(item.id) === String(selectedUser.id)) + 1, 1)}</p></div></div><div className="surface-soft rounded-[24px] p-5"><p className="text-sm font-semibold text-white">Roles</p><p className="mt-3 text-sm leading-7 text-slate-400">{selectedUser.roles?.length ? selectedUser.roles.map((roleId) => roleMap.get(String(roleId)) || 'Role').join(', ') : 'No roles'}</p></div></div> : null}</DialogBody><DialogFooter><Button variant="ghost" onClick={() => setSelectedUser(null)}>Close</Button></DialogFooter></DialogContent></Dialog>
-      <Dialog open={Boolean(deleteEvent)} onOpenChange={(open) => !open && setDeleteEvent(null)}><DialogContent className="w-[min(96vw,520px)]"><DialogHeader><DialogTitle>Delete event</DialogTitle><DialogDescription>This removes the event from the live schedule.</DialogDescription></DialogHeader><DialogBody><div className="surface-soft rounded-[24px] p-5 text-sm text-slate-300">{deleteEvent?.desc || 'Selected event'}</div></DialogBody><DialogFooter><Button variant="ghost" onClick={() => setDeleteEvent(null)}>Cancel</Button><Button variant="danger" onClick={async () => { if (!deleteEvent) return; try { await api.post('/api/events/delete', { id: deleteEvent.id }); showToast('Deleted'); setDeleteEvent(null); await loadDashboard(true); } catch (error) { handleError(error, 'Unable to delete the event.'); } }}>Delete</Button></DialogFooter></DialogContent></Dialog>
-      {toast ? <div className="fixed bottom-5 right-5 z-[80]"><div className={cn('surface-highlight flex items-center gap-3 rounded-[24px] px-5 py-4 text-sm font-medium text-white', toast.tone === 'error' ? 'border-rose-300/20 bg-rose-300/10' : 'border-cyan-300/18')}><AlertCircle className={cn('h-4 w-4', toast.tone === 'error' ? 'text-rose-200' : 'text-cyan-100')} />{toast.message}</div></div> : null}
+      <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
+        <DialogContent className="w-[min(96vw,600px)] rounded-md border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+              {eventForm.id ? 'Edit Event Schedule' : 'Create New Event'}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+              Configure timing and routing for this event instance.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Identifier / Message</label>
+                <input
+                  value={eventForm.name}
+                  onChange={(e) => updateEventField('name', e.target.value)}
+                  placeholder="e.g. Daily Standup"
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Time (HH:MM)</label>
+                <TimeInput
+                  value={eventForm.time}
+                  onChange={(e) => updateEventField('time', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Delivery Method</label>
+                <select
+                  value={eventForm.mode}
+                  onChange={(e) => updateEventField('mode', e.target.value)}
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                >
+                  <option value="server">Server Broadcast</option>
+                  <option value="dm">Direct Message</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Recurrence</label>
+                <select
+                  value={eventForm.daily ? 'daily' : 'once'}
+                  onChange={(e) => updateEventField('daily', e.target.value === 'daily')}
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                >
+                  <option value="once">Execute Once</option>
+                  <option value="daily">Execute Daily</option>
+                </select>
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Target Type</label>
+                <select
+                  value={eventForm.targetType}
+                  onChange={(e) => updateEventField('targetType', e.target.value)}
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                >
+                  {eventForm.mode === 'server' ? (
+                    <>
+                      <option value="channel">Specific Channel</option>
+                      <option value="role">Role Members</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="user">Specific User</option>
+                      <option value="role">Role Members (DM All)</option>
+                    </>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            {eventForm.targetType === 'channel' && (
+              <div className="space-y-1 pt-2">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Destination Channel</label>
+                <select
+                  value={eventForm.targetId}
+                  onChange={(e) => updateEventField('targetId', e.target.value)}
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                >
+                  <option value="">Select channel...</option>
+                  {channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {eventForm.targetType === 'role' && (
+              <div className="space-y-1 pt-2">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Target Role</label>
+                <select
+                  value={eventForm.targetId}
+                  onChange={(e) => updateEventField('targetId', e.target.value)}
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                >
+                  <option value="">Select role...</option>
+                  {roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {eventForm.targetType === 'user' && (
+              <div className="space-y-2 pt-2">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Search & Select User</label>
+                <input
+                  value={eventSearchUsers}
+                  onChange={(e) => setEventSearchUsers(e.target.value)}
+                  placeholder="Type to filter..."
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                />
+                <div className="max-h-40 overflow-y-auto rounded-md border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900">
+                  {roster.filter((item) => `${userLabel(item)} ${item.username || ''}`.toLowerCase().includes(eventSearchUsers.trim().toLowerCase())).slice(0, 8).map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => updateEventField('targetId', String(item.id))}
+                      className={cn(
+                        'flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm font-medium transition-colors',
+                        String(eventForm.targetId) === String(item.id)
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-100'
+                          : 'text-gray-700 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-800'
+                      )}
+                    >
+                      <span>{userLabel(item)}</span>
+                      {String(eventForm.targetId) === String(item.id) && <CheckCircle2 className="h-4 w-4" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {eventForm.mode === 'server' && eventForm.targetType === 'channel' && (
+              <div className="space-y-1 pt-2">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Optional: Role to Mention</label>
+                <select
+                  value={eventForm.mentionRoleId || ''}
+                  onChange={(e) => updateEventField('mentionRoleId', e.target.value)}
+                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                >
+                  <option value="">None</option>
+                  {roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                id="event-enabled"
+                type="checkbox"
+                checked={eventForm.enabled}
+                onChange={(e) => updateEventField('enabled', e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+              />
+              <label htmlFor="event-enabled" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Enable immediately upon saving
+              </label>
+            </div>
+          </DialogBody>
+          <DialogFooter className="mt-6 flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-gray-800">
+            <Button variant="outline" onClick={() => setEventDialogOpen(false)}>Cancel</Button>
+            <Button loading={savingEvent} onClick={saveEvent}>Save Configuration</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(selectedEvent)} onOpenChange={(open) => !open && setSelectedEvent(null)}>
+        <DialogContent className="w-[min(96vw,500px)] rounded-md border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">
+          <DialogHeader className="mb-4 border-b border-gray-200 pb-4 dark:border-gray-800">
+            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">Event Properties</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">Current record for: {selectedEvent?.desc}</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            {selectedEvent && (
+              <div className="grid grid-cols-2 gap-y-6">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Method</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{selectedEvent.delivery_mode === 'dm' ? 'Direct Message' : 'Server Broadcast'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Status</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{selectedEvent.enabled ? 'Active' : 'Disabled'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Target Assignment</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{targetLabel(selectedEvent)}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Last Execution / Baseline</p>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{formatDate(selectedEvent.last_reminded_date || selectedEvent.last_vote_date || selectedEvent.event_date)}</p>
+                </div>
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter className="mt-6">
+            <Button variant="outline" className="w-full" onClick={() => setSelectedEvent(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(selectedUser)} onOpenChange={(open) => !open && setSelectedUser(null)}>
+        <DialogContent className="w-[min(96vw,500px)] rounded-md border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">
+          <DialogHeader className="mb-4 border-b border-gray-200 pb-4 dark:border-gray-800">
+            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">Member Record</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">{selectedUser ? userLabel(selectedUser) : ''}</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            {selectedUser && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-3 divide-x divide-gray-200 rounded border border-gray-200 bg-gray-50 text-center dark:divide-gray-700 dark:border-gray-800 dark:bg-gray-800/50">
+                  <div className="p-3">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Rank</p>
+                    <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                      #{Math.max(leaderboard.findIndex((item) => String(item.id) === String(selectedUser.id)) + 1, 1)}
+                    </p>
+                  </div>
+                  <div className="p-3">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Voice</p>
+                    <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{formatDuration(selectedUser.voice_time)}</p>
+                  </div>
+                  <div className="p-3">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Msgs</p>
+                    <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{selectedUser.messages}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Assigned Roles</p>
+                  <p className="mt-2 text-sm text-gray-900 dark:text-gray-100">
+                    {selectedUser.roles?.length ? selectedUser.roles.map((roleId) => roleMap.get(String(roleId)) || 'Unknown Role').join(', ') : 'No roles assigned'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter className="mt-6">
+            <Button variant="outline" className="w-full" onClick={() => setSelectedUser(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(deleteEvent)} onOpenChange={(open) => !open && setDeleteEvent(null)}>
+        <DialogContent className="w-[min(96vw,400px)] rounded-md border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">Confirm Deletion</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Are you sure you want to remove <span className="font-semibold text-gray-900 dark:text-white">"{deleteEvent?.desc}"</span>? This action cannot be reversed.
+            </p>
+          </DialogBody>
+          <DialogFooter className="mt-6 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDeleteEvent(null)}>Cancel</Button>
+            <Button
+              className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+              onClick={async () => {
+                if (!deleteEvent) return;
+                try {
+                  await api.post('/api/events/delete', { id: deleteEvent.id });
+                  showToast('Event permanently deleted.');
+                  setDeleteEvent(null);
+                  await loadDashboard(true);
+                } catch (error) {
+                  handleError(error, 'Failed to process deletion.');
+                }
+              }}
+            >
+              Confirm Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5">
+          <div className={cn(
+            'flex items-center gap-3 rounded-md border bg-white px-4 py-3 shadow-lg dark:bg-gray-800',
+            toast.tone === 'error' ? 'border-red-200 dark:border-red-900/50' : 'border-gray-200 dark:border-gray-700'
+          )}>
+            <AlertCircle className={cn('h-5 w-5', toast.tone === 'error' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400')} />
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{toast.message}</span>
+          </div>
+        </div>
+      )}
     </>
   );
 }

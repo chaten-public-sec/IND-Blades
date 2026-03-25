@@ -16,6 +16,7 @@
   --primary: #5b8cff;
   --primary-strong: #3b82f6;
   --primary-soft: rgba(91, 140, 255, 0.14);
+  --primary-rgb: 91, 140, 255;
   --card-bg: rgba(16, 22, 38, 0.82);
   --bg-card-rgb: 16, 22, 38;
 }
@@ -34,6 +35,7 @@
   --primary: #315efb;
   --primary-strong: #2348d6;
   --primary-soft: rgba(49, 94, 251, 0.1);
+  --primary-rgb: 49, 94, 251;
   --card-bg: rgba(255, 255, 255, 0.9);
   --bg-card-rgb: 255, 255, 255;
 }

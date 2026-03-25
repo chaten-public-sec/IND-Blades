@@ -1,61 +1,71 @@
 {
-  "__welcome__": {
-    "enabled": true,
-    "channel_id": 1478106773595357185,
-    "title": "Welcome to IND Blades",
-    "message": "Welcome to the IND Blades family. Read the rules, grab your roles, and get ready to move with the fam.",
-    "image_url": "",
-    "gif_url": "",
-    "accent_color": "#51A7FF"
-  },
-  "__activity__": {
-    "users": {
-      "1431661540926554114": {
-        "voice_time": 0,
-        "messages": 1,
-        "last_active": 1774410025.088938
-      }
+    "__welcome__": {
+        "enabled": true,
+        "channel_id": 1478106773595357185,
+        "title": "Welcome to IND Blades",
+        "message": "Welcome to the IND Blades family. Read the rules, grab your roles, and get ready to move with the fam.",
+        "image_url": "",
+        "gif_url": "",
+        "accent_color": "#51A7FF"
     },
-    "last_reset": 1774180728
-  },
-  "__logs__": {
-    "enabled": true,
-    "moderation_channel_id": 1478106773595357185,
-    "event_channel_id": 1478106738359144498,
-    "system_channel_id": 1478106738359144498
-  },
-  "__autorole__": {
-    "join_role_id": null,
-    "bindings": [],
-    "strike_mapping": {}
-  },
-  "__notifications__": {
-    "enabled": true,
-    "user_ids": [
-      "1213688605168635945"
-    ]
-  },
-  "__strikes__": {
-    "1213688605168635945": {
-      "user_id": 1213688605168635945,
-      "strikes": [],
-      "strike_count": 0
+    "__activity__": {
+        "users": {
+            "1431661540926554114": {
+                "voice_time": 0,
+                "messages": 1,
+                "last_active": 1774410025.088938
+            },
+            "1209857885459456060": {
+                "voice_time": 177.04160261154175,
+                "messages": 0,
+                "last_active": 1774416478.6686537
+            },
+            "1038728060658266153": {
+                "voice_time": 1454.4450221061707,
+                "messages": 0,
+                "last_active": 1774416957.4812398
+            }
+        },
+        "last_reset": 1774180728
     },
-    "1477371037120200724": {
-      "user_id": 1477371037120200724,
-      "strikes": [],
-      "strike_count": 0
+    "__logs__": {
+        "enabled": true,
+        "moderation_channel_id": 1478106773595357185,
+        "event_channel_id": 1478106738359144498,
+        "system_channel_id": 1478106738359144498
+    },
+    "__autorole__": {
+        "join_role_id": null,
+        "bindings": [],
+        "strike_mapping": {}
+    },
+    "__notifications__": {
+        "enabled": true,
+        "user_ids": [
+            "1213688605168635945"
+        ]
+    },
+    "__strikes__": {
+        "1213688605168635945": {
+            "user_id": 1213688605168635945,
+            "strikes": [],
+            "strike_count": 0
+        },
+        "1477371037120200724": {
+            "user_id": 1477371037120200724,
+            "strikes": [],
+            "strike_count": 0
+        }
+    },
+    "__strikes_config__": {
+        "expiry_days": 7,
+        "strike_mapping": {}
+    },
+    "__logs_v2__": {
+        "enabled": true,
+        "categories": []
+    },
+    "__activity_config__": {
+        "afk_channel_id": null
     }
-  },
-  "__strikes_config__": {
-    "expiry_days": 7,
-    "strike_mapping": {}
-  },
-  "__logs_v2__": {
-    "enabled": true,
-    "categories": []
-  },
-  "__activity_config__": {
-    "afk_channel_id": null
-  }
 }
