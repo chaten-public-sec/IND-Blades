@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { RefreshCcw, Trophy, Waves, MessageSquareText, TimerReset } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { RefreshCcw, Trophy, Waves, MessageSquareText, TimerReset, ShieldBan } from 'lucide-react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/access';
 import { formatDuration, formatShortDate } from '../lib/format';
 import SectionHeader from '../components/SectionHeader';
+import SearchPickerDialog from '../components/SearchPickerDialog';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '../components/ui/table';
@@ -29,9 +30,19 @@ function ActivityMetric({ icon: Icon, label, value, note }) {
 export default function ActivityPage() {
   const dashboard = useDashboardContext();
   const [resetting, setResetting] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const canReset = hasPermission(dashboard.viewer, 'reset_activity');
+  const afkChannelIds = dashboard.activityConfig?.afk_channel_ids || (dashboard.activityConfig?.afk_channel_id ? [dashboard.activityConfig.afk_channel_id] : []);
   const topThree = dashboard.leaderboard.slice(0, 3);
   const weeklyScore = Math.round((Number(dashboard.myProfile?.voice_time || 0) / 60) * 2 + Number(dashboard.myProfile?.messages || 0));
+  const voiceChannels = useMemo(
+    () => dashboard.channels.filter((item) => [2].includes(Number(item.type))),
+    [dashboard.channels]
+  );
+  const afkChannelNames = afkChannelIds
+    .map((channelId) => voiceChannels.find((item) => String(item.id) === String(channelId))?.name)
+    .filter(Boolean);
 
   const resetActivity = async () => {
     setResetting(true);
@@ -43,6 +54,21 @@ export default function ActivityPage() {
       dashboard.handleError(error, 'Unable to reset the weekly activity yet.');
     } finally {
       setResetting(false);
+    }
+  };
+
+  const saveAfkChannels = async (selectedIds) => {
+    setConfigSaving(true);
+    try {
+      await api.post('/api/activity/config', {
+        afk_channel_ids: selectedIds,
+      });
+      await dashboard.loadDashboard(true);
+      dashboard.showToast('success', 'AFK exclusions updated.', 'activity-afk-config');
+    } catch (error) {
+      dashboard.handleError(error, 'Unable to update AFK exclusions.');
+    } finally {
+      setConfigSaving(false);
     }
   };
 
@@ -124,6 +150,33 @@ export default function ActivityPage() {
         </CardContent>
       </Card>
 
+      {canReset ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>AFK Channel Exclusion</CardTitle>
+            <CardDescription>Voice time inside selected AFK channels is ignored from weekly activity.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="surface-soft rounded-[24px] p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-[16px] bg-[var(--primary-soft)] text-[var(--primary)]">
+                  <ShieldBan className="h-4 w-4" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-[var(--text-main)]">Ignored Voice Channels</p>
+                  <p className="text-sm text-[var(--text-muted)]">
+                    {afkChannelNames.length ? afkChannelNames.join(', ') : 'No AFK channels excluded yet.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <Button variant="secondary" loading={configSaving} onClick={() => setPickerOpen(true)}>
+              Choose AFK Channels
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Leaderboard</CardTitle>
@@ -165,6 +218,18 @@ export default function ActivityPage() {
           )}
         </CardContent>
       </Card>
+
+      <SearchPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        title="Choose AFK Channels"
+        description="Selected channels will not contribute any voice activity."
+        items={voiceChannels.map((item) => ({ id: item.id, label: item.name, description: `Voice channel ${item.id}` }))}
+        selectedIds={afkChannelIds}
+        onConfirm={saveAfkChannels}
+        multiple
+        placeholder="Search voice channels"
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { AlertTriangle, CheckCheck, CheckCircle2, Info, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, CheckCheck, CheckCircle2, Info, Trash2, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatDate } from '../lib/format';
 import { Button } from './ui/button';
@@ -21,14 +21,35 @@ function resolveTone(item) {
 export default function NotificationDrawer({ open, onClose, dashboard }) {
   const [loadingId, setLoadingId] = useState('');
   const [clearing, setClearing] = useState(false);
+  const [items, setItems] = useState(dashboard.notificationCenter);
+  const [exitingIds, setExitingIds] = useState([]);
 
-  const markRead = async (id) => {
+  useEffect(() => {
+    setItems(dashboard.notificationCenter);
+  }, [dashboard.notificationCenter]);
+
+  const removeNotifications = (ids) => {
+    const idSet = new Set(ids.map(String));
+    setItems((current) => current.filter((item) => !idSet.has(String(item.id))));
+    dashboard.setNotificationCenter?.((current) => current.filter((item) => !idSet.has(String(item.id))));
+  };
+
+  const animateOut = (ids) => {
+    const idSet = new Set(ids.map(String));
+    setExitingIds((current) => Array.from(new Set([...current, ...Array.from(idSet)])));
+    window.setTimeout(() => {
+      removeNotifications(Array.from(idSet));
+      setExitingIds((current) => current.filter((item) => !idSet.has(String(item))));
+    }, 180);
+  };
+
+  const dismissNotification = async (id) => {
     setLoadingId(id);
+    animateOut([id]);
     try {
-      await api.post(`/api/notifications/center/${id}/read`);
-      await dashboard.loadDashboard(true);
-      dashboard.showToast('success', 'Marked as read.', `notification-read-${id}`);
+      await api.post(`/api/notifications/center/${id}/dismiss`);
     } catch (error) {
+      await dashboard.loadDashboard(true);
       dashboard.handleError(error, 'Unable to update that notification.');
     } finally {
       setLoadingId('');
@@ -37,11 +58,13 @@ export default function NotificationDrawer({ open, onClose, dashboard }) {
 
   const clearAll = async () => {
     setClearing(true);
+    const currentIds = items.map((item) => item.id);
+    animateOut(currentIds);
     try {
-      await api.post('/api/notifications/center/read-all');
-      await dashboard.loadDashboard(true);
+      await api.post('/api/notifications/center/clear-all');
       dashboard.showToast('success', 'All notifications cleared.', 'notification-clear-all');
     } catch (error) {
+      await dashboard.loadDashboard(true);
       dashboard.handleError(error, 'Unable to clear notifications.');
     } finally {
       setClearing(false);
@@ -75,7 +98,7 @@ export default function NotificationDrawer({ open, onClose, dashboard }) {
 
         <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
           <Badge variant={dashboard.unreadNotifications ? 'default' : 'neutral'}>
-            {dashboard.unreadNotifications} unread
+            {items.filter((item) => !item.read_at).length} unread
           </Badge>
           <Button size="sm" variant="secondary" loading={clearing} onClick={clearAll}>
             <CheckCheck className="h-4 w-4" />
@@ -84,12 +107,19 @@ export default function NotificationDrawer({ open, onClose, dashboard }) {
         </div>
 
         <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-          {dashboard.notificationCenter.length ? dashboard.notificationCenter.map((item) => {
+          {items.length ? items.map((item) => {
             const tone = resolveTone(item);
             const Icon = notificationIcon[tone] || Info;
+            const exiting = exitingIds.includes(String(item.id));
 
             return (
-              <div key={item.id} className="surface-soft rounded-[24px] p-4">
+              <div
+                key={item.id}
+                className={cn(
+                  'surface-soft rounded-[24px] p-4 transition duration-200',
+                  exiting ? '-translate-x-6 opacity-0' : 'translate-x-0 opacity-100'
+                )}
+              >
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     'mt-0.5 flex h-10 w-10 items-center justify-center rounded-[14px]',
@@ -107,11 +137,10 @@ export default function NotificationDrawer({ open, onClose, dashboard }) {
                     </div>
                     <div className="mt-4 flex items-center justify-between gap-3">
                       <span className="text-xs text-[var(--text-muted)]">{formatDate(item.created_at)}</span>
-                      {!item.read_at ? (
-                        <Button size="sm" variant="ghost" loading={loadingId === item.id} onClick={() => markRead(item.id)}>
-                          Mark read
-                        </Button>
-                      ) : null}
+                      <Button size="sm" variant="ghost" loading={loadingId === item.id} onClick={() => dismissNotification(item.id)}>
+                        <Trash2 className="h-4 w-4" />
+                        Clear
+                      </Button>
                     </div>
                   </div>
                 </div>

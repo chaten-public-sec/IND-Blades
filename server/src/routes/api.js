@@ -37,6 +37,8 @@ function createApiRouter({
   router.get('/notifications/center', managementController.listNotifications);
   router.post('/notifications/center/read-all', managementController.markAllNotificationsRead);
   router.post('/notifications/center/:id/read', managementController.markNotificationRead);
+  router.post('/notifications/center/clear-all', managementController.dismissAllNotifications);
+  router.post('/notifications/center/:id/dismiss', managementController.dismissNotification);
 
   router.get('/management/settings', requirePermission(PERMISSIONS.CONFIGURE_FAM_ROLE, roleService), managementController.getSettings);
   router.post('/management/settings', requirePermission(PERMISSIONS.CONFIGURE_FAM_ROLE, roleService), managementController.updateSettings);
@@ -53,6 +55,7 @@ function createApiRouter({
   router.get('/welcome', requirePermission(PERMISSIONS.VIEW_WELCOME, roleService), legacyController.getWelcome);
   router.post('/welcome/toggle', requirePermission(PERMISSIONS.MANAGE_WELCOME, roleService), legacyController.postWelcomeToggle);
   router.post('/welcome/channel', requirePermission(PERMISSIONS.MANAGE_WELCOME, roleService), legacyController.postWelcomeChannel);
+  router.post('/welcome/content', requirePermission(PERMISSIONS.MANAGE_WELCOME, roleService), legacyController.postWelcomeContent);
   router.post('/welcome/preview', requirePermission(PERMISSIONS.MANAGE_WELCOME, roleService), legacyController.postWelcomePreview);
 
   router.get('/log-settings', requirePermission(PERMISSIONS.VIEW_LOGS, roleService), legacyController.getLogSettings);

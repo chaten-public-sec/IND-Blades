@@ -2,9 +2,9 @@ import { Activity, CalendarDays, Clock3, IdCard, MessageSquareText, ShieldAlert,
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { Skeleton } from './ui/skeleton';
 import RoleBadge from './RoleBadge';
 import ProfileAvatar from './ProfileAvatar';
+import { Spinner } from './ui/spinner';
 import { formatDate, formatDuration } from '../lib/format';
 
 function roleColorStyle(color) {
@@ -38,24 +38,14 @@ function ActivityCard({ icon: Icon, label, value, note }) {
   );
 }
 
-function ProfileSkeleton() {
+function ProfileLoading() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Skeleton className="h-24 w-24 rounded-[28px]" />
-        <div className="space-y-3">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-6 w-24 rounded-full" />
-        </div>
+    <div className="flex min-h-[280px] flex-col items-center justify-center gap-4 text-center">
+      <Spinner className="h-8 w-8 text-[var(--primary)]" />
+      <div>
+        <p className="text-lg font-semibold text-[var(--text-main)]">Loading profile</p>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">Fetching profile details and strike history.</p>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Skeleton className="h-32 rounded-[24px]" />
-        <Skeleton className="h-32 rounded-[24px]" />
-        <Skeleton className="h-32 rounded-[24px]" />
-      </div>
-      <Skeleton className="h-48 rounded-[28px]" />
-      <Skeleton className="h-40 rounded-[28px]" />
     </div>
   );
 }
@@ -90,7 +80,7 @@ export default function UserProfileDialog({
 
         <DialogBody>
           {loading || !user ? (
-            <ProfileSkeleton />
+            <ProfileLoading />
           ) : (
             <div className="space-y-6">
               <Card className="surface-highlight">

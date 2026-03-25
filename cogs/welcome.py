@@ -16,7 +16,19 @@ COMMANDS_PATH = "data/commands.json"
 
 def get_welcome_config():
     data = load_data()
-    return data.get("__welcome__", {"enabled": True, "channel_id": WELCOME_CHANNEL_ID})
+    config = data.get("__welcome__", {})
+    return {
+        "enabled": bool(config.get("enabled", True)),
+        "channel_id": config.get("channel_id", WELCOME_CHANNEL_ID),
+        "title": str(config.get("title") or "Welcome to IND Blades"),
+        "message": str(
+            config.get("message")
+            or "Welcome to the IND Blades family. Read the rules, grab your roles, and get ready to move with the fam."
+        ),
+        "image_url": str(config.get("image_url") or "").strip(),
+        "gif_url": str(config.get("gif_url") or "").strip(),
+        "accent_color": str(config.get("accent_color") or "#51A7FF"),
+    }
 
 
 def save_welcome_config(config):
@@ -42,20 +54,30 @@ def save_commands(commands_list):
         json.dump(commands_list, file_handle, indent=2)
 
 
-def generate_welcome_embed(member: discord.Member):
+def resolve_embed_color(value):
+    try:
+        return int(str(value or "#51A7FF").replace("#", ""), 16)
+    except ValueError:
+        return 0x51A7FF
+
+
+def generate_welcome_embed(member: discord.Member, override=None):
+    config = {**get_welcome_config(), **(override or {})}
     member_count = member.guild.member_count if member.guild else "Unknown"
     embed = discord.Embed(
-        title="",
+        title=str(config.get("title") or "Welcome to IND Blades"),
         description=(
-            f"✨ Welcome {member.mention} to the IND Blades Family! ✨\n\n"
-            "We're thrilled to have you here. Please verify yourself, grab your roles, and dive into the voice chats!\n\n"
-            "Let's make some amazing memories! ⚡\n\n"
-            f"**Member #{member_count}** • IND Blades • Premium Entry"
+            f"{member.mention}\n\n"
+            f"{str(config.get('message') or '').strip()}\n\n"
+            f"**Member #{member_count}** • IND Blades"
         ),
-        color=0x51A7FF,
+        color=resolve_embed_color(config.get("accent_color")),
     )
     if member.avatar:
         embed.set_thumbnail(url=member.avatar.url)
+    media_url = str(config.get("gif_url") or config.get("image_url") or "").strip()
+    if media_url:
+        embed.set_image(url=media_url)
     embed.set_footer(text="IND Blades", icon_url=member.guild.icon.url if member.guild.icon else None)
     embed.timestamp = discord.utils.utcnow()
     return embed
@@ -93,6 +115,7 @@ class WelcomePanel(discord.ui.View):
         super().__init__(timeout=300)
         self.cog = cog
         self.interaction = interaction
+        self.message = None
         self.refresh_items()
 
     def refresh_items(self):
@@ -100,28 +123,11 @@ class WelcomePanel(discord.ui.View):
         config = get_welcome_config()
         enabled = config.get("enabled", True)
 
-        turn_on = discord.ui.Button(
-            label="Turn On",
-            style=discord.ButtonStyle.success,
-            disabled=enabled,
-        )
-        turn_off = discord.ui.Button(
-            label="Turn Off",
-            style=discord.ButtonStyle.danger,
-            disabled=not enabled,
-        )
-        choose_channel = discord.ui.Button(
-            label="Change Channel",
-            style=discord.ButtonStyle.secondary,
-        )
-        preview = discord.ui.Button(
-            label="Preview Welcome",
-            style=discord.ButtonStyle.secondary,
-        )
-        close = discord.ui.Button(
-            label="Close",
-            style=discord.ButtonStyle.secondary,
-        )
+        turn_on = discord.ui.Button(label="Turn On", style=discord.ButtonStyle.success, disabled=enabled)
+        turn_off = discord.ui.Button(label="Turn Off", style=discord.ButtonStyle.danger, disabled=not enabled)
+        choose_channel = discord.ui.Button(label="Change Channel", style=discord.ButtonStyle.secondary)
+        preview = discord.ui.Button(label="Preview Welcome", style=discord.ButtonStyle.secondary)
+        close = discord.ui.Button(label="Close", style=discord.ButtonStyle.secondary)
 
         turn_on.callback = self.turn_on_callback
         turn_off.callback = self.turn_off_callback
@@ -140,33 +146,15 @@ class WelcomePanel(discord.ui.View):
         channel = guild.get_channel(int(config.get("channel_id") or 0)) if config.get("channel_id") else None
         embed = discord.Embed(
             title="Welcome Settings",
-            description="Manage the welcome message for your server.",
+            description="Manage the welcome message and preview routing for your server.",
             color=0x6EE7B7 if config.get("enabled", True) else 0xED4245,
         )
-        embed.add_field(
-            name="Status",
-            value="On" if config.get("enabled", True) else "Off",
-            inline=True,
-        )
-        embed.add_field(
-            name="Channel",
-            value=channel.mention if channel else "Not set",
-            inline=True,
-        )
+        embed.add_field(name="Status", value="On" if config.get("enabled", True) else "Off", inline=True)
+        embed.add_field(name="Channel", value=channel.mention if channel else "Not set", inline=True)
+        embed.add_field(name="Title", value=str(config.get("title") or "Welcome to IND Blades")[:256], inline=False)
         embed.set_footer(text="IND Blades")
         embed.timestamp = discord.utils.utcnow()
         return embed
-
-    async def refresh_message(self):
-        self.refresh_items()
-        if self.message:
-            await self.message.edit(embed=self.build_embed(self.interaction.guild), view=self)
-
-    async def on_timeout(self):
-        for child in self.children:
-            child.disabled = True
-        if getattr(self, "message", None):
-            await self.message.edit(view=self)
 
     async def update_state(self, interaction: discord.Interaction, enabled: bool):
         config = get_welcome_config()
@@ -190,7 +178,7 @@ class WelcomePanel(discord.ui.View):
 
     async def preview_callback(self, interaction: discord.Interaction):
         embed = generate_welcome_embed(interaction.user)
-        if os.path.exists(GIF_PATH):
+        if not (get_welcome_config().get("gif_url") or get_welcome_config().get("image_url")) and os.path.exists(GIF_PATH):
             embed.set_image(url="attachment://ind-blades.gif")
             file = discord.File(GIF_PATH, filename="ind-blades.gif")
             await interaction.response.send_message(embed=embed, file=file, ephemeral=True)
@@ -227,13 +215,14 @@ class Welcome(commands.Cog):
         except Exception:
             return None
 
-    async def send_welcome_message(self, member: discord.Member, mention=True, override_channel_id=None):
+    async def send_welcome_message(self, member: discord.Member, mention=True, override_channel_id=None, override_config=None):
         channel = await self.get_target_channel(member.guild, override_channel_id)
         if not channel:
             return False
 
-        embed = generate_welcome_embed(member)
-        if os.path.exists(GIF_PATH):
+        embed = generate_welcome_embed(member, override_config)
+        has_external_media = str((override_config or {}).get("gif_url") or (override_config or {}).get("image_url") or "").strip()
+        if not has_external_media and not (get_welcome_config().get("gif_url") or get_welcome_config().get("image_url")) and os.path.exists(GIF_PATH):
             embed.set_image(url="attachment://ind-blades.gif")
             file = discord.File(GIF_PATH, filename="ind-blades.gif")
             await channel.send(content=member.mention if mention else None, embed=embed, file=file)
@@ -241,7 +230,7 @@ class Welcome(commands.Cog):
             await channel.send(content=member.mention if mention else None, embed=embed)
         return True
 
-    async def send_preview_message(self, guild: discord.Guild, override_channel_id=None):
+    async def send_preview_message(self, guild: discord.Guild, override_channel_id=None, override_config=None):
         user_id = self.bot.user.id if self.bot.user else None
         preview_member = guild.get_member(user_id) if user_id else None
         if not preview_member and user_id:
@@ -249,24 +238,16 @@ class Welcome(commands.Cog):
                 preview_member = await guild.fetch_member(user_id)
             except Exception:
                 preview_member = guild.me
-        
         if not preview_member:
             preview_member = guild.me
-            
-        if not preview_member:
-            if self.bot.user:
-                preview_member = type(
-                    "PreviewMember",
-                    (),
-                    {
-                        "mention": f"<@{self.bot.user.id}>",
-                        "avatar": self.bot.user.display_avatar,
-                        "guild": guild,
-                    },
-                )()
         if not preview_member:
             return False
-        return await self.send_welcome_message(preview_member, mention=False, override_channel_id=override_channel_id)
+        return await self.send_welcome_message(
+            preview_member,
+            mention=False,
+            override_channel_id=override_channel_id,
+            override_config=override_config,
+        )
 
     @tasks.loop(seconds=5)
     async def command_worker(self):
@@ -286,10 +267,23 @@ class Welcome(commands.Cog):
                 continue
 
             guild = self.bot.guilds[0] if self.bot.guilds else None
+            payload = command.get("payload", {})
+
             try:
                 if not guild:
                     raise RuntimeError("Guild not available")
-                sent = await self.send_preview_message(guild, command.get("payload", {}).get("channel_id"))
+
+                sent = await self.send_preview_message(
+                    guild,
+                    payload.get("channel_id"),
+                    {
+                        "title": payload.get("title"),
+                        "message": payload.get("message"),
+                        "image_url": payload.get("image_url"),
+                        "gif_url": payload.get("gif_url"),
+                        "accent_color": payload.get("accent_color"),
+                    },
+                )
                 if not sent:
                     raise RuntimeError("Unable to send preview")
                 command["status"] = "completed"

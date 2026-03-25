@@ -20,7 +20,7 @@ import { DashboardContext } from '../lib/DashboardContext';
 import { useDashboard } from '../hooks/useDashboard';
 import { useTheme } from './ThemeProvider';
 import { Button } from './ui/button';
-import { Skeleton } from './ui/skeleton';
+import { Spinner } from './ui/spinner';
 import RoleBadge from './RoleBadge';
 import { hasPermission } from '../lib/access';
 import NotificationDrawer from './NotificationDrawer';
@@ -131,15 +131,11 @@ export default function DashboardLayout() {
   if (dashboard.loading) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="surface-highlight flex w-full max-w-lg flex-col gap-5 rounded-[32px] px-6 py-8">
-          <div className="grid gap-4 sm:grid-cols-[240px_1fr]">
-            <Skeleton className="h-60 rounded-[28px]" />
-            <div className="space-y-4">
-              <Skeleton className="h-5 w-28" />
-              <Skeleton className="h-10 w-52" />
-              <Skeleton className="h-24 rounded-[24px]" />
-              <Skeleton className="h-24 rounded-[24px]" />
-            </div>
+        <div className="surface-highlight flex w-full max-w-sm flex-col items-center gap-4 rounded-[32px] px-6 py-10 text-center">
+          <Spinner className="h-8 w-8 text-[var(--primary)]" />
+          <div>
+            <p className="text-lg font-semibold text-[var(--text-main)]">Loading dashboard</p>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">Syncing your dashboard data and permissions.</p>
           </div>
         </div>
       </div>

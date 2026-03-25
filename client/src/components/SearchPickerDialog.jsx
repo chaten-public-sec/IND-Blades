@@ -16,15 +16,17 @@ export default function SearchPickerDialog({
   confirmLabel = 'Save',
   placeholder = 'Search',
 }) {
+  const selectedKey = useMemo(() => selectedIds.map(String).join('|'), [selectedIds]);
+  const normalizedSelectedIds = useMemo(() => (selectedKey ? selectedKey.split('|') : []), [selectedKey]);
   const [query, setQuery] = useState('');
-  const [localSelection, setLocalSelection] = useState(selectedIds);
+  const [localSelection, setLocalSelection] = useState(normalizedSelectedIds);
 
   useEffect(() => {
     if (open) {
-      setLocalSelection(selectedIds);
+      setLocalSelection(normalizedSelectedIds);
       setQuery('');
     }
-  }, [open, selectedIds]);
+  }, [open, normalizedSelectedIds]);
 
   const filteredItems = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -35,13 +37,14 @@ export default function SearchPickerDialog({
   }, [items, query]);
 
   const toggleItem = (id) => {
+    const targetId = String(id);
     setLocalSelection((current) => {
       if (multiple) {
-        return current.includes(id)
-          ? current.filter((item) => item !== id)
-          : [...current, id];
+        return current.includes(targetId)
+          ? current.filter((item) => item !== targetId)
+          : [...current, targetId];
       }
-      return current.includes(id) ? [] : [id];
+      return current.includes(targetId) ? [] : [targetId];
     });
   };
 
@@ -69,7 +72,7 @@ export default function SearchPickerDialog({
             </div>
             <div className="grid gap-2">
             {filteredItems.map((item) => {
-              const active = localSelection.includes(item.id);
+              const active = localSelection.includes(String(item.id));
               return (
                 <button
                   key={item.id}

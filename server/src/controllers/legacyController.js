@@ -139,6 +139,19 @@ function createLegacyController({
       res.json({ success: true, config });
     },
 
+    postWelcomeContent(req, res) {
+      const config = legacyStoreService.setWelcomeConfig({
+        title: req.body?.title,
+        message: req.body?.message,
+        image_url: req.body?.image_url,
+        gif_url: req.body?.gif_url,
+        accent_color: req.body?.accent_color
+      });
+      emitSystemUpdate('WELCOME_UPDATED', { config });
+      logService.appendLog('Welcome content updated.', 'info', 'welcome');
+      res.json({ success: true, config });
+    },
+
     postWelcomePreview(req, res) {
       const channelId = String(req.body?.channel_id || legacyStoreService.getWelcomeConfig().channel_id || '').trim();
       if (!channelId) {
@@ -146,7 +159,14 @@ function createLegacyController({
         return;
       }
 
-      commandQueueService.enqueueCommand('welcome_preview', { channel_id: channelId });
+      commandQueueService.enqueueCommand('welcome_preview', {
+        channel_id: channelId,
+        title: req.body?.title,
+        message: req.body?.message,
+        image_url: req.body?.image_url,
+        gif_url: req.body?.gif_url,
+        accent_color: req.body?.accent_color
+      });
       logService.appendLog('Queued welcome preview.', 'info', 'welcome', { channel_id: channelId });
       res.json({ success: true });
     },

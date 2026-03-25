@@ -63,11 +63,44 @@ function getDefaultModerationLogChannelId() {
   return parseSnowflake(getEnv('MODERATION_LOGS_CHANNEL_ID', ''));
 }
 
+function normalizeHexColor(value, fallback = '#51A7FF') {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return fallback;
+  }
+
+  const normalized = raw.startsWith('#') ? raw : `#${raw}`;
+  return /^#[0-9a-fA-F]{6}$/.test(normalized) ? normalized.toUpperCase() : fallback;
+}
+
+function parseSnowflakeArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .map((item) => parseSnowflake(item))
+        .filter(Boolean)
+        .map(String)
+    )
+  );
+}
+
 function normalizeWelcomeConfig(value) {
   const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   return {
     enabled: parseBoolean(input.enabled, true),
-    channel_id: parseSnowflake(input.channel_id) || getDefaultWelcomeChannelId()
+    channel_id: parseSnowflake(input.channel_id) || getDefaultWelcomeChannelId(),
+    title: String(input.title || 'Welcome to IND Blades').trim() || 'Welcome to IND Blades',
+    message: String(
+      input.message ||
+      'Welcome to the IND Blades family. Read the rules, grab your roles, and get ready to move with the fam.'
+    ).trim(),
+    image_url: String(input.image_url || '').trim(),
+    gif_url: String(input.gif_url || '').trim(),
+    accent_color: normalizeHexColor(input.accent_color, '#51A7FF')
   };
 }
 
@@ -83,14 +116,17 @@ function normalizeLogSettings(value) {
 }
 
 function normalizeDiscordLogsConfig(value) {
-  if (value && typeof value === 'object' && Array.isArray(value.categories)) {
-    return value;
-  }
-
   const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   return {
     enabled: parseBoolean(input.enabled, false),
-    categories: []
+    categories: Array.isArray(input.categories)
+      ? input.categories.map((category) => ({
+          name: String(category?.name || 'Unnamed Category').trim() || 'Unnamed Category',
+          enabled: parseBoolean(category?.enabled, true),
+          logs: Array.from(new Set((Array.isArray(category?.logs) ? category.logs : []).map(String).filter(Boolean))),
+          channel_id: parseSnowflake(category?.channel_id)
+        }))
+      : []
   };
 }
 
@@ -428,16 +464,31 @@ class LegacyStoreService {
 
   getActivityConfig(store = this.readStore()) {
     const config = store.__activity_config__ || {};
+    const afkChannelIds = parseSnowflakeArray(config.afk_channel_ids);
+    const legacyAfkChannelId = parseSnowflake(config.afk_channel_id);
+    const mergedAfkIds = Array.from(new Set([
+      ...afkChannelIds,
+      ...(legacyAfkChannelId ? [String(legacyAfkChannelId)] : [])
+    ]));
+
     return {
-      afk_channel_id: parseSnowflake(config.afk_channel_id) || null
+      afk_channel_id: mergedAfkIds[0] || null,
+      afk_channel_ids: mergedAfkIds
     };
   }
 
   setActivityConfig(partial) {
     const store = this.readStore();
+    const current = this.getActivityConfig(store);
+    const nextAfkIds = partial?.afk_channel_ids !== undefined
+      ? parseSnowflakeArray(partial.afk_channel_ids)
+      : (partial?.afk_channel_id !== undefined
+          ? (parseSnowflake(partial.afk_channel_id) ? [String(parseSnowflake(partial.afk_channel_id))] : [])
+          : current.afk_channel_ids);
     const next = {
-      ...this.getActivityConfig(store),
-      afk_channel_id: partial?.afk_channel_id !== undefined ? parseSnowflake(partial.afk_channel_id) || null : this.getActivityConfig(store).afk_channel_id
+      ...current,
+      afk_channel_id: nextAfkIds[0] || null,
+      afk_channel_ids: nextAfkIds
     };
     store.__activity_config__ = next;
     this.writeStore(store);

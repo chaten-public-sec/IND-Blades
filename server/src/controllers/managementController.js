@@ -108,6 +108,16 @@ function createManagementController({
     async markAllNotificationsRead(req, res) {
       await notificationService.markAllRead(req.viewer.id);
       res.json({ success: true });
+    },
+
+    async dismissNotification(req, res) {
+      await notificationService.dismiss(req.params.id, req.viewer.id);
+      res.json({ success: true });
+    },
+
+    async dismissAllNotifications(req, res) {
+      await notificationService.dismissAll(req.viewer.id);
+      res.json({ success: true });
     }
   };
 }

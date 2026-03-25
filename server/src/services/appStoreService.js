@@ -299,6 +299,35 @@ class AppStoreService {
     return readAt;
   }
 
+  async deleteNotification(notificationId, userId) {
+    const id = String(notificationId);
+    const targetId = String(userId);
+
+    if (this.mode === 'mongo') {
+      await this.db.collection('notifications').deleteOne({ _id: id, target_user_id: targetId });
+      return;
+    }
+
+    this.fileState.notifications = (this.fileState.notifications || []).filter(
+      (item) => !(String(item.id) === id && String(item.target_user_id) === targetId)
+    );
+    this.persistFileState();
+  }
+
+  async clearNotifications(userId) {
+    const targetId = String(userId);
+
+    if (this.mode === 'mongo') {
+      await this.db.collection('notifications').deleteMany({ target_user_id: targetId });
+      return;
+    }
+
+    this.fileState.notifications = (this.fileState.notifications || []).filter(
+      (item) => String(item.target_user_id) !== targetId
+    );
+    this.persistFileState();
+  }
+
   normalizeStrikeRequest(value) {
     const input = value && typeof value === 'object' ? value : {};
     return {

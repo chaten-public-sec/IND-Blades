@@ -215,6 +215,7 @@ export default function HomePage() {
     handleError,
     showToast,
     logout,
+    setNotificationCenter,
   };
 
   return (
@@ -269,16 +270,7 @@ export default function HomePage() {
               </Button>
             )}
 
-            {!viewer ? (
-              <Button
-                disabled={loading}
-                onClick={() => {
-                  window.location.href = buildApiUrl('/api/auth/discord');
-                }}
-              >
-                {loading ? 'Checking' : 'Login'}
-              </Button>
-            ) : (
+            {viewer ? (
               <div className="relative">
                 <button
                   type="button"
@@ -308,6 +300,10 @@ export default function HomePage() {
                   theme={theme}
                   toggleTheme={toggle}
                 />
+              </div>
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-soft)]">
+                <ProfileAvatar name="Guest" avatarUrl={null} size="sm" className="rounded-full" />
               </div>
             )}
           </div>

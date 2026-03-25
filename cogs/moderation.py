@@ -15,6 +15,152 @@ DEFAULT_MODERATION_LOGS_CHANNEL_ID = int(os.getenv("MODERATION_LOGS_CHANNEL_ID",
 TARGET_GUILD_ID = int(os.getenv("GUILD_ID", "0") or 0)
 
 
+def strike_status(strike):
+    return str(strike.get("status") or "active")
+
+
+def active_strike_count(strikes):
+    return len([strike for strike in (strikes or []) if strike_status(strike) == "active"])
+
+
+def strike_color(count):
+    if count >= 3:
+        return 0xED4245
+    if count == 2:
+        return 0xF97316
+    return 0xFEE75C
+
+
+class StrikeRecordsView(discord.ui.View):
+    def __init__(self, interaction_user_id: int, rows):
+        super().__init__(timeout=180)
+        self.interaction_user_id = interaction_user_id
+        self.rows = rows
+        self.page = 0
+        self.page_size = 5
+        self.sync_buttons()
+
+    def total_pages(self):
+        return max(1, (len(self.rows) + self.page_size - 1) // self.page_size)
+
+    def sync_buttons(self):
+        self.prev_page.disabled = self.page <= 0
+        self.next_page.disabled = self.page >= self.total_pages() - 1
+
+    def build_embed(self):
+        embed = discord.Embed(
+            title="⚠️ Strike Records",
+            color=0xFEE75C,
+        )
+
+        if not self.rows:
+            embed.description = "No strike records found."
+        else:
+            start = self.page * self.page_size
+            items = self.rows[start : start + self.page_size]
+            lines = []
+            for row in items:
+                lines.append(
+                    f"👤 **{row['name']}**\n"
+                    f"Strikes: {row['active_count']}\n"
+                    f"Last Strike: {row['last_strike']}"
+                )
+            embed.description = "\n\n".join(lines)
+
+        embed.set_footer(text=f"IND Blades • Strike System • Page {self.page + 1}/{self.total_pages()}")
+        embed.timestamp = discord.utils.utcnow()
+        return embed
+
+    async def interaction_check(self, interaction: discord.Interaction):
+        if interaction.user.id != self.interaction_user_id:
+            await interaction.response.send_message("Only the original command user can control this view.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="⬅️ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.page = max(0, self.page - 1)
+        self.sync_buttons()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    @discord.ui.button(label="➡️ Next", style=discord.ButtonStyle.secondary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.page = min(self.total_pages() - 1, self.page + 1)
+        self.sync_buttons()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+
+class StrikeUserDetailsView(discord.ui.View):
+    def __init__(self, interaction_user_id: int, member: discord.Member, strikes, name_lookup):
+        super().__init__(timeout=180)
+        self.interaction_user_id = interaction_user_id
+        self.member = member
+        self.strikes = strikes
+        self.name_lookup = name_lookup
+        self.page = 0
+        self.page_size = 4
+        self.sync_buttons()
+
+    def total_pages(self):
+        return max(1, (len(self.strikes) + self.page_size - 1) // self.page_size)
+
+    def sync_buttons(self):
+        self.prev_page.disabled = self.page <= 0
+        self.next_page.disabled = self.page >= self.total_pages() - 1
+
+    def build_embed(self):
+        active_count = active_strike_count(self.strikes)
+        embed = discord.Embed(
+            title=f"⚠️ Strike Details - {self.member.display_name}",
+            color=strike_color(active_count if active_count else 1),
+        )
+        embed.add_field(name="Username", value=self.member.mention, inline=True)
+        embed.add_field(name="Active Strikes", value=str(active_count), inline=True)
+        embed.set_thumbnail(url=self.member.display_avatar.url)
+
+        if not self.strikes:
+            embed.description = "This user has no strikes."
+        else:
+            start = self.page * self.page_size
+            items = self.strikes[start : start + self.page_size]
+            description_lines = []
+            for index, strike in enumerate(items, start=start + 1):
+                issued_by = self.name_lookup.get(str(strike.get("issued_by"))) or str(strike.get("issued_by") or "System")
+                revoked_by = self.name_lookup.get(str(strike.get("revoked_by"))) or str(strike.get("revoked_by") or "N/A")
+                description_lines.append(
+                    f"🟥 **Strike {index}**\n"
+                    f"Reason: {strike.get('reason') or 'No reason provided'}\n"
+                    f"Given by: {issued_by}\n"
+                    f"Date: {strike.get('timestamp') or 'Unknown'}\n"
+                    f"Expires: {strike.get('expires_at') or 'Unknown'}\n"
+                    f"Status: {strike_status(strike)}\n"
+                    f"Revoked by: {revoked_by}"
+                )
+            embed.description = "\n\n".join(description_lines)
+
+        embed.set_footer(text=f"IND Blades • Strike System • Page {self.page + 1}/{self.total_pages()}")
+        embed.timestamp = discord.utils.utcnow()
+        return embed
+
+    async def interaction_check(self, interaction: discord.Interaction):
+        if interaction.user.id != self.interaction_user_id:
+            await interaction.response.send_message("Only the original command user can control this view.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="⬅️ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.page = max(0, self.page - 1)
+        self.sync_buttons()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    @discord.ui.button(label="➡️ Next", style=discord.ButtonStyle.secondary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.page = min(self.total_pages() - 1, self.page + 1)
+        self.sync_buttons()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+
 class Moderation(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -273,6 +419,7 @@ class Moderation(commands.Cog):
     @app_commands.choices(action=[
         app_commands.Choice(name="Add Strike", value="add"),
         app_commands.Choice(name="Remove Latest", value="remove"),
+        app_commands.Choice(name="View Records", value="view"),
         app_commands.Choice(name="Set Expiry", value="config")
     ])
     async def strike(
@@ -298,6 +445,47 @@ class Moderation(commands.Cog):
             data["__strikes_config__"]["expiry_days"] = expiry_days
             save_data(data)
             await interaction.response.send_message(f"Strike expiry set to {expiry_days} days.")
+            return
+
+        if action == "view":
+            if user is None:
+                strike_rows = []
+                name_lookup = {}
+                for member in interaction.guild.members:
+                    name_lookup[str(member.id)] = member.display_name
+
+                for user_id, user_data in data.get("__strikes__", {}).items():
+                    strikes = list(user_data.get("strikes", []))
+                    if not strikes:
+                        continue
+                    member = interaction.guild.get_member(int(user_id))
+                    display_name = member.display_name if member else f"User {str(user_id)[-4:]}"
+                    last_strike = sorted(
+                        [strike.get("timestamp") or strike.get("expires_at") for strike in strikes if strike.get("timestamp") or strike.get("expires_at")],
+                        reverse=True,
+                    )
+                    strike_rows.append({
+                        "user_id": str(user_id),
+                        "name": display_name,
+                        "active_count": active_strike_count(strikes),
+                        "last_strike": last_strike[0] if last_strike else "Unknown",
+                    })
+
+                strike_rows.sort(key=lambda item: (-item["active_count"], item["name"].lower()))
+                view = StrikeRecordsView(interaction.user.id, strike_rows)
+                await interaction.response.send_message(embed=view.build_embed(), view=view)
+                return
+
+            user_id = str(user.id)
+            strike_bucket = data.get("__strikes__", {}).get(user_id, {"strikes": []})
+            strikes = sorted(
+                list(strike_bucket.get("strikes", [])),
+                key=lambda strike: str(strike.get("timestamp") or ""),
+                reverse=True,
+            )
+            name_lookup = {str(member.id): member.display_name for member in interaction.guild.members}
+            view = StrikeUserDetailsView(interaction.user.id, user, strikes, name_lookup)
+            await interaction.response.send_message(embed=view.build_embed(), view=view)
             return
 
         if not user:
@@ -389,8 +577,26 @@ class Moderation(commands.Cog):
             ])
             count = data["__strikes__"][user_id]["strike_count"]
             save_data(data)
-            
-            await interaction.response.send_message(f"Removed latest strike from {user.mention}. Total strikes: {count}")
+
+            embed = discord.Embed(
+                title="✅ Strike Revoked",
+                color=0x57F287,
+                description=(
+                    f"Target: {user.mention}\n"
+                    f"Revoked by: {interaction.user.mention}\n"
+                    f"Remaining Active Strikes: {count}"
+                ),
+            )
+            embed.add_field(name="Revoked Strike", value=removed.get("reason") or "No reason provided", inline=False)
+            embed.add_field(name="Original Date", value=str(removed.get("timestamp") or "Unknown"), inline=True)
+            embed.add_field(name="Expires", value=str(removed.get("expires_at") or "Unknown"), inline=True)
+            embed.add_field(name="Status", value="revoked", inline=True)
+            embed.add_field(name="Revoked Reason", value=f"Removed: {removed['reason']}", inline=False)
+            embed.set_thumbnail(url=user.display_avatar.url)
+            embed.set_footer(text="IND Blades • Strike System")
+            embed.timestamp = discord.utils.utcnow()
+
+            await interaction.response.send_message(embed=embed)
             await self.send_mod_log(interaction.guild, self.mod_log_embed("Strike Removed", interaction.user, user, f"Removed: {removed['reason']}", strikes=count))
             self.bot.dispatch(
                 "strike_updated",

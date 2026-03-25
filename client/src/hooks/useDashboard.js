@@ -9,7 +9,7 @@ const EMPTY_BOOTSTRAP = {
   log_settings: {},
   discord_logs: {},
   activity: { users: {}, last_reset: 0 },
-  activity_config: { afk_channel_id: null },
+  activity_config: { afk_channel_id: null, afk_channel_ids: [] },
   autorole: { join_role_id: null, bindings: [], strike_mapping: {} },
   notification_settings: { enabled: false, user_ids: [] },
   strike_config: { expiry_days: 7, strike_mapping: {} },
@@ -34,7 +34,7 @@ export function useDashboard() {
   const [logSettings, setLogSettings] = useState({});
   const [discordLogs, setDiscordLogs] = useState({});
   const [activity, setActivity] = useState({ users: {}, last_reset: 0 });
-  const [activityConfig, setActivityConfig] = useState({ afk_channel_id: null });
+  const [activityConfig, setActivityConfig] = useState({ afk_channel_id: null, afk_channel_ids: [] });
   const [autorole, setAutorole] = useState({ join_role_id: null, bindings: [], strike_mapping: {} });
   const [notificationSettings, setNotificationSettings] = useState({ enabled: false, user_ids: [] });
   const [strikeConfig, setStrikeConfig] = useState({ expiry_days: 7, strike_mapping: {} });
@@ -65,7 +65,7 @@ export function useDashboard() {
     setLogSettings(data.log_settings || {});
     setDiscordLogs(data.discord_logs || {});
     setActivity(data.activity || { users: {}, last_reset: 0 });
-    setActivityConfig(data.activity_config || { afk_channel_id: null });
+    setActivityConfig(data.activity_config || { afk_channel_id: null, afk_channel_ids: [] });
     setAutorole(data.autorole || { join_role_id: null, bindings: [], strike_mapping: {} });
     setNotificationSettings(data.notification_settings || { enabled: false, user_ids: [] });
     setStrikeConfig(data.strike_config || { expiry_days: 7, strike_mapping: {} });
@@ -282,6 +282,7 @@ export function useDashboard() {
     setLogSettings,
     setDiscordLogs,
     setActivityConfig,
+    setNotificationCenter,
     setAutorole,
     setNotificationSettings,
     setStrikeConfig,

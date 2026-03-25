@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { AlertTriangle, BellRing, CheckCheck, CheckCircle2, Info } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, BellRing, CheckCheck, CheckCircle2, Info, Trash2 } from 'lucide-react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
 import { formatDate } from '../lib/format';
@@ -43,22 +43,43 @@ export default function NotificationsPage() {
   const dashboard = useDashboardContext();
   const [loadingId, setLoadingId] = useState('');
   const [markingAll, setMarkingAll] = useState(false);
+  const [items, setItems] = useState(dashboard.notificationCenter);
+  const [exitingIds, setExitingIds] = useState([]);
 
-  const unreadCount = dashboard.notificationCenter.filter((item) => !item.read_at).length;
-  const readCount = dashboard.notificationCenter.length - unreadCount;
+  useEffect(() => {
+    setItems(dashboard.notificationCenter);
+  }, [dashboard.notificationCenter]);
+
+  const unreadCount = items.filter((item) => !item.read_at).length;
+  const readCount = items.length - unreadCount;
   const actorMap = useMemo(() => {
     const map = new Map();
     dashboard.users.forEach((user) => map.set(String(user.id), user.name));
     return map;
   }, [dashboard.users]);
 
-  const markRead = async (notificationId) => {
+  const removeNotifications = (ids) => {
+    const idSet = new Set(ids.map(String));
+    setItems((current) => current.filter((item) => !idSet.has(String(item.id))));
+    dashboard.setNotificationCenter?.((current) => current.filter((item) => !idSet.has(String(item.id))));
+  };
+
+  const animateOut = (ids) => {
+    const idSet = new Set(ids.map(String));
+    setExitingIds((current) => Array.from(new Set([...current, ...Array.from(idSet)])));
+    window.setTimeout(() => {
+      removeNotifications(Array.from(idSet));
+      setExitingIds((current) => current.filter((item) => !idSet.has(String(item))));
+    }, 180);
+  };
+
+  const dismissNotification = async (notificationId) => {
     setLoadingId(notificationId);
+    animateOut([notificationId]);
     try {
-      await api.post(`/api/notifications/center/${notificationId}/read`);
-      await dashboard.loadDashboard(true);
-      dashboard.showToast('success', 'Notification marked as read.', `notification-read-${notificationId}`);
+      await api.post(`/api/notifications/center/${notificationId}/dismiss`);
     } catch (error) {
+      await dashboard.loadDashboard(true);
       dashboard.handleError(error, 'Unable to update that notification.');
     } finally {
       setLoadingId('');
@@ -67,12 +88,14 @@ export default function NotificationsPage() {
 
   const markAllRead = async () => {
     setMarkingAll(true);
+    const currentIds = items.map((item) => item.id);
+    animateOut(currentIds);
     try {
-      await api.post('/api/notifications/center/read-all');
-      await dashboard.loadDashboard(true);
-      dashboard.showToast('success', 'All notifications marked as read.', 'notification-read-all');
+      await api.post('/api/notifications/center/clear-all');
+      dashboard.showToast('success', 'All notifications cleared.', 'notification-read-all');
     } catch (error) {
-      dashboard.handleError(error, 'Unable to mark all notifications as read.');
+      await dashboard.loadDashboard(true);
+      dashboard.handleError(error, 'Unable to clear all notifications.');
     } finally {
       setMarkingAll(false);
     }
@@ -93,7 +116,7 @@ export default function NotificationsPage() {
       />
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <MetricCard label="Total Notifications" value={dashboard.notificationCenter.length} note="Everything currently available in your feed." />
+        <MetricCard label="Total Notifications" value={items.length} note="Everything currently available in your feed." />
         <MetricCard label="Unread" value={unreadCount} note="Items you have not opened yet." />
         <MetricCard label="Read" value={readCount} note="Items already acknowledged." />
       </div>
@@ -104,11 +127,15 @@ export default function NotificationsPage() {
           <CardDescription>The full notification stream updates automatically as new events happen.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {dashboard.notificationCenter.length ? dashboard.notificationCenter.map((item) => {
+          {items.length ? items.map((item) => {
             const tone = resolveTone(item.type);
             const Icon = tone.icon;
+            const exiting = exitingIds.includes(String(item.id));
             return (
-              <div key={item.id} className="surface-soft rounded-[26px] p-5">
+              <div
+                key={item.id}
+                className={`surface-soft rounded-[26px] p-5 transition duration-200 ${exiting ? '-translate-x-6 opacity-0' : 'translate-x-0 opacity-100'}`}
+              >
                 <div className="flex items-start gap-4">
                   <div className={`flex h-11 w-11 items-center justify-center rounded-[16px] ${tone.wrapper}`}>
                     <Icon className="h-5 w-5" />
@@ -128,11 +155,10 @@ export default function NotificationsPage() {
                           By {actorMap.get(String(item.actor_user_id)) || item.actor_user_id}
                         </p>
                       ) : null}
-                      {!item.read_at ? (
-                        <Button size="sm" variant="ghost" loading={loadingId === item.id} onClick={() => markRead(item.id)}>
-                          Mark read
-                        </Button>
-                      ) : null}
+                      <Button size="sm" variant="ghost" loading={loadingId === item.id} onClick={() => dismissNotification(item.id)}>
+                        <Trash2 className="h-4 w-4" />
+                        Clear
+                      </Button>
                     </div>
                   </div>
                 </div>

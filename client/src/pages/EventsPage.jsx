@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
-import { CalendarPlus2, Eye, Pencil, Power, Trash2, Users } from 'lucide-react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { CalendarPlus2, Eye, Pencil, Power, Trash2, Users, Volume2 } from 'lucide-react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { api } from '../lib/api';
 import { hasPermission } from '../lib/access';
@@ -12,6 +15,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
+const eventSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(1, 'This field is required'),
+  time: z.string().trim().min(1, 'This field is required'),
+  daily: z.boolean(),
+  mode: z.enum(['server', 'dm']),
+  targetType: z.enum(['channel', 'role', 'user']),
+  targetId: z.string().trim().min(1, 'This field is required'),
+  mentionRoleId: z.string().optional(),
+  vcChannelId: z.string().optional(),
+});
+
 const EMPTY_FORM = {
   id: '',
   name: '',
@@ -21,25 +36,8 @@ const EMPTY_FORM = {
   targetType: 'channel',
   targetId: '',
   mentionRoleId: '',
+  vcChannelId: '',
 };
-
-function validateEventForm(form) {
-  const errors = {};
-
-  if (!String(form.name || '').trim()) {
-    errors.name = 'Event name is required.';
-  }
-
-  if (!String(form.time || '').trim()) {
-    errors.time = 'Choose a time.';
-  }
-
-  if (!String(form.targetId || '').trim()) {
-    errors.targetId = 'Choose where this event should go.';
-  }
-
-  return errors;
-}
 
 function FieldError({ message }) {
   if (!message) return null;
@@ -78,17 +76,34 @@ export default function EventsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [targetPickerOpen, setTargetPickerOpen] = useState(false);
   const [rolePickerOpen, setRolePickerOpen] = useState(false);
+  const [vcPickerOpen, setVcPickerOpen] = useState(false);
   const [detailsEvent, setDetailsEvent] = useState(null);
   const [reasonOpenId, setReasonOpenId] = useState('');
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+
+  const {
+    register,
+    reset,
+    setValue,
+    watch,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(eventSchema),
+    defaultValues: EMPTY_FORM,
+  });
+
+  const formValues = watch();
+  const voiceChannels = useMemo(
+    () => dashboard.channels.filter((item) => Number(item.type) === 2),
+    [dashboard.channels]
+  );
 
   const targetLabelMap = useMemo(() => {
     const map = new Map();
-    dashboard.channels.forEach((item) => map.set(item.id, item.name));
-    dashboard.roles.forEach((item) => map.set(item.id, item.name));
-    dashboard.users.forEach((item) => map.set(item.id, item.name));
+    dashboard.channels.forEach((item) => map.set(String(item.id), item.name));
+    dashboard.roles.forEach((item) => map.set(String(item.id), item.name));
+    dashboard.users.forEach((item) => map.set(String(item.id), item.name));
     return map;
   }, [dashboard.channels, dashboard.roles, dashboard.users]);
 
@@ -99,49 +114,43 @@ export default function EventsPage() {
   }, [dashboard.users]);
 
   const openCreate = () => {
-    setForm(EMPTY_FORM);
-    setErrors({});
+    reset(EMPTY_FORM);
     setDialogOpen(true);
   };
 
   const openEdit = (event) => {
-    setForm({
+    reset({
       id: event.id,
       name: event.desc,
       time: event.time || '18:00',
       daily: Boolean(event.daily),
       mode: event.delivery_mode || 'server',
       targetType: event.target_type || 'channel',
-      targetId: event.target_id || '',
-      mentionRoleId: event.mention_role_id || '',
+      targetId: String(event.target_id || ''),
+      mentionRoleId: String(event.mention_role_id || ''),
+      vcChannelId: String(event.vc_channel_id || ''),
     });
-    setErrors({});
     setDialogOpen(true);
   };
 
-  const saveEvent = async () => {
-    const nextErrors = validateEventForm(form);
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length) {
-      return;
-    }
-
+  const saveEvent = handleSubmit(async (values) => {
     setSaving(true);
     try {
       const payload = {
-        id: form.id || undefined,
-        name: form.name,
-        time: form.time,
-        daily: form.daily,
-        delivery_mode: form.mode,
-        target_type: form.targetType,
-        target_id: form.targetId,
-        mention_role_id: form.mentionRoleId || null,
+        id: values.id || undefined,
+        name: values.name,
+        time: values.time,
+        daily: values.daily,
+        delivery_mode: values.mode,
+        target_type: values.targetType,
+        target_id: values.targetId,
+        mention_role_id: values.mentionRoleId || null,
+        vc_channel_id: values.vcChannelId || null,
       };
 
-      if (form.id) {
+      if (values.id) {
         await api.post('/api/events/update', payload);
-        dashboard.showToast('success', 'Event updated successfully.', `event-update-${form.id}`);
+        dashboard.showToast('success', 'Event updated successfully.', `event-update-${values.id}`);
       } else {
         await api.post('/api/events/create', payload);
         dashboard.showToast('success', 'Event created successfully.', 'event-create');
@@ -154,7 +163,7 @@ export default function EventsPage() {
     } finally {
       setSaving(false);
     }
-  };
+  });
 
   const toggleEvent = async (event) => {
     try {
@@ -178,15 +187,16 @@ export default function EventsPage() {
 
   const activeEvents = dashboard.events.filter((item) => item.enabled).length;
   const disabledEvents = dashboard.events.length - activeEvents;
-  const currentTargetLabel = targetLabelMap.get(form.targetId) || 'Choose target';
-  const currentMentionRoleLabel = targetLabelMap.get(form.mentionRoleId) || 'Choose role';
+  const currentTargetLabel = targetLabelMap.get(String(formValues.targetId || '')) || 'Choose target';
+  const currentMentionRoleLabel = targetLabelMap.get(String(formValues.mentionRoleId || '')) || 'Choose role';
+  const currentVcLabel = targetLabelMap.get(String(formValues.vcChannelId || '')) || 'Choose voice channel';
 
   return (
     <div className="space-y-6">
       <SectionHeader
         eyebrow="Events"
         title="Events"
-        description="Create, review, and manage upcoming event reminders with a cleaner card-first workflow."
+        description="Create, review, and manage upcoming event reminders with controlled forms and live updates."
         actions={canCreate ? (
           <Button onClick={openCreate}>
             <CalendarPlus2 className="h-4 w-4" />
@@ -217,7 +227,7 @@ export default function EventsPage() {
                     {event.event_date ? formatDate(event.event_date) : (event.time || 'Time not set')}
                   </p>
                   <p className="text-sm text-[var(--text-muted)]">
-                    {event.daily ? 'Daily event' : 'One-time event'} / {event.delivery_mode || 'server'} / {targetLabelMap.get(event.target_id) || 'No target'}
+                    {event.daily ? 'Daily event' : 'One-time event'} / {event.delivery_mode || 'server'} / {targetLabelMap.get(String(event.target_id || '')) || 'No target'}
                   </p>
                 </div>
                 <div className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-[var(--primary-soft)] text-[var(--primary)]">
@@ -235,9 +245,9 @@ export default function EventsPage() {
                   <p className="mt-2 text-2xl font-semibold text-[var(--text-main)]">{event.not_attending?.length || 0}</p>
                 </div>
                 <div className="surface-soft rounded-[22px] p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Last Trigger</p>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Event VC</p>
                   <p className="mt-2 text-sm font-semibold text-[var(--text-main)]">
-                    {formatDate(event.last_reminded_date || event.last_vote_date || event.event_date, 'Not triggered')}
+                    {targetLabelMap.get(String(event.vc_channel_id || '')) || 'Not set'}
                   </p>
                 </div>
               </div>
@@ -280,53 +290,39 @@ export default function EventsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="w-[min(96vw,760px)]">
           <DialogHeader>
-            <DialogTitle>{form.id ? 'Edit Event' : 'Create Event'}</DialogTitle>
-            <DialogDescription>Choose the schedule, audience, and delivery style for this event.</DialogDescription>
+            <DialogTitle>{formValues.id ? 'Edit Event' : 'Create Event'}</DialogTitle>
+            <DialogDescription>Choose the schedule, audience, and event VC without losing selected values.</DialogDescription>
           </DialogHeader>
           <DialogBody>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Event Name</label>
                 <input
-                  value={form.name}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setForm((current) => ({ ...current, name: value }));
-                    setErrors((current) => ({ ...current, name: value.trim() ? '' : current.name }));
-                  }}
+                  {...register('name')}
                   className={`surface-soft h-12 w-full rounded-[22px] px-4 text-sm ${errors.name ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
                   placeholder="War Room"
                 />
-                <FieldError message={errors.name} />
+                <FieldError message={errors.name?.message} />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Time</label>
                 <input
-                  value={form.time}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setForm((current) => ({ ...current, time: value }));
-                    setErrors((current) => ({ ...current, time: value.trim() ? '' : current.time }));
-                  }}
+                  {...register('time')}
                   type="time"
                   className={`surface-soft h-12 w-full rounded-[22px] px-4 text-sm ${errors.time ? 'border border-rose-400/35 bg-rose-500/8' : ''}`}
                 />
-                <FieldError message={errors.time} />
+                <FieldError message={errors.time?.message} />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Delivery Mode</label>
                 <SelectField
-                  value={form.mode}
+                  value={formValues.mode}
                   onChange={(event) => {
                     const nextMode = event.target.value;
-                    setForm((current) => ({
-                      ...current,
-                      mode: nextMode,
-                      targetType: nextMode === 'dm' ? 'user' : 'channel',
-                      targetId: '',
-                      mentionRoleId: '',
-                    }));
-                    setErrors((current) => ({ ...current, targetId: '' }));
+                    setValue('mode', nextMode, { shouldDirty: true });
+                    setValue('targetType', nextMode === 'dm' ? 'user' : 'channel', { shouldDirty: true });
+                    setValue('targetId', '', { shouldDirty: true, shouldValidate: true });
+                    setValue('mentionRoleId', '', { shouldDirty: true });
                   }}
                   className="h-12 rounded-[22px]"
                 >
@@ -337,8 +333,8 @@ export default function EventsPage() {
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Cadence</label>
                 <SelectField
-                  value={form.daily ? 'daily' : 'once'}
-                  onChange={(event) => setForm((current) => ({ ...current, daily: event.target.value === 'daily' }))}
+                  value={formValues.daily ? 'daily' : 'once'}
+                  onChange={(event) => setValue('daily', event.target.value === 'daily', { shouldDirty: true })}
                   className="h-12 rounded-[22px]"
                 >
                   <option value="once">One time</option>
@@ -348,14 +344,14 @@ export default function EventsPage() {
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Target Type</label>
                 <SelectField
-                  value={form.targetType}
+                  value={formValues.targetType}
                   onChange={(event) => {
-                    setForm((current) => ({ ...current, targetType: event.target.value, targetId: '' }));
-                    setErrors((current) => ({ ...current, targetId: '' }));
+                    setValue('targetType', event.target.value, { shouldDirty: true });
+                    setValue('targetId', '', { shouldDirty: true, shouldValidate: true });
                   }}
                   className="h-12 rounded-[22px]"
                 >
-                  {form.mode === 'server' ? (
+                  {formValues.mode === 'server' ? (
                     <>
                       <option value="channel">Channel</option>
                       <option value="role">Role</option>
@@ -380,19 +376,29 @@ export default function EventsPage() {
                   onClick={() => setTargetPickerOpen(true)}
                 >
                   {currentTargetLabel}
-                  <span className="text-xs text-[var(--text-muted)]">{form.targetId ? 'Selected' : 'Choose'}</span>
+                  <span className="text-xs text-[var(--text-muted)]">{formValues.targetId ? 'Selected' : 'Choose'}</span>
                 </Button>
-                <FieldError message={errors.targetId} />
+                <FieldError message={errors.targetId?.message} />
               </div>
-              {form.mode === 'server' ? (
+
+              {formValues.mode === 'server' ? (
                 <div className="space-y-2">
                   <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Mention Role</label>
                   <Button type="button" variant="secondary" className="w-full justify-between" onClick={() => setRolePickerOpen(true)}>
                     {currentMentionRoleLabel}
-                    <span className="text-xs text-[var(--text-muted)]">{form.mentionRoleId ? 'Selected' : 'Optional'}</span>
+                    <span className="text-xs text-[var(--text-muted)]">{formValues.mentionRoleId ? 'Selected' : 'Optional'}</span>
                   </Button>
                 </div>
               ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-[0.22em] text-[var(--text-muted)]">Event Voice Channel</label>
+              <Button type="button" variant="secondary" className="w-full justify-between" onClick={() => setVcPickerOpen(true)}>
+                <span className="truncate">{currentVcLabel}</span>
+                <span className="text-xs text-[var(--text-muted)]">{formValues.vcChannelId ? 'Selected' : 'Optional'}</span>
+              </Button>
+              <p className="text-sm text-[var(--text-muted)]">When a member clicks attend, the bot will send the event VC join action for this channel.</p>
             </div>
           </DialogBody>
           <DialogFooter>
@@ -411,11 +417,11 @@ export default function EventsPage() {
         <DialogContent className="w-[min(96vw,820px)]">
           <DialogHeader>
             <DialogTitle>{detailsEvent?.desc || 'Event Details'}</DialogTitle>
-            <DialogDescription>Attendance, responses, and reminder details for this event.</DialogDescription>
+            <DialogDescription>Attendance, responses, delivery target, and event VC details.</DialogDescription>
           </DialogHeader>
           {detailsEvent ? (
             <DialogBody>
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-5">
                 <div className="surface-soft rounded-[22px] p-4">
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Date & Time</p>
                   <p className="mt-2 text-sm font-semibold text-[var(--text-main)]">
@@ -425,7 +431,7 @@ export default function EventsPage() {
                 <div className="surface-soft rounded-[22px] p-4">
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Target</p>
                   <p className="mt-2 text-sm font-semibold text-[var(--text-main)]">
-                    {targetLabelMap.get(detailsEvent.target_id) || detailsEvent.target_id || 'Not set'}
+                    {targetLabelMap.get(String(detailsEvent.target_id || '')) || detailsEvent.target_id || 'Not set'}
                   </p>
                 </div>
                 <div className="surface-soft rounded-[22px] p-4">
@@ -438,6 +444,12 @@ export default function EventsPage() {
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Status</p>
                   <p className="mt-2 text-sm font-semibold text-[var(--text-main)]">
                     {detailsEvent.enabled ? 'Active' : 'Disabled'}
+                  </p>
+                </div>
+                <div className="surface-soft rounded-[22px] p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Event VC</p>
+                  <p className="mt-2 text-sm font-semibold text-[var(--text-main)]">
+                    {targetLabelMap.get(String(detailsEvent.vc_channel_id || '')) || 'Not set'}
                   </p>
                 </div>
               </div>
@@ -490,7 +502,7 @@ export default function EventsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setReasonOpenId((current) => current === id ? '' : id)}
+                              onClick={() => setReasonOpenId((current) => (current === id ? '' : id))}
                             >
                               {reasonVisible ? 'Hide Reason' : 'View Reason'}
                             </Button>
@@ -521,13 +533,10 @@ export default function EventsPage() {
         onOpenChange={setTargetPickerOpen}
         title="Choose Target"
         description="Search members, roles, or channels based on the current target type."
-        items={targetOptions({ channels: dashboard.channels, roles: dashboard.roles, users: dashboard.users, targetType: form.targetType })}
-        selectedIds={form.targetId ? [form.targetId] : []}
-        onConfirm={(ids) => {
-          setForm((current) => ({ ...current, targetId: ids[0] || '' }));
-          setErrors((current) => ({ ...current, targetId: ids[0] ? '' : current.targetId }));
-        }}
-        placeholder={`Search ${form.targetType}`}
+        items={targetOptions({ channels: dashboard.channels, roles: dashboard.roles, users: dashboard.users, targetType: formValues.targetType })}
+        selectedIds={formValues.targetId ? [formValues.targetId] : []}
+        onConfirm={(ids) => setValue('targetId', ids[0] || '', { shouldDirty: true, shouldValidate: true })}
+        placeholder={`Search ${formValues.targetType}`}
       />
 
       <SearchPickerDialog
@@ -536,9 +545,20 @@ export default function EventsPage() {
         title="Choose Mention Role"
         description="Optional role to mention when the event is posted in server mode."
         items={dashboard.roles.map((item) => ({ id: item.id, label: item.name, description: `Role ID ${item.id}` }))}
-        selectedIds={form.mentionRoleId ? [form.mentionRoleId] : []}
-        onConfirm={(ids) => setForm((current) => ({ ...current, mentionRoleId: ids[0] || '' }))}
+        selectedIds={formValues.mentionRoleId ? [formValues.mentionRoleId] : []}
+        onConfirm={(ids) => setValue('mentionRoleId', ids[0] || '', { shouldDirty: true })}
         placeholder="Search roles"
+      />
+
+      <SearchPickerDialog
+        open={vcPickerOpen}
+        onOpenChange={setVcPickerOpen}
+        title="Choose Event Voice Channel"
+        description="Members who click attend will receive the Fam Event VC join action for this voice channel."
+        items={voiceChannels.map((item) => ({ id: item.id, label: item.name, description: `Voice channel ${item.id}` }))}
+        selectedIds={formValues.vcChannelId ? [formValues.vcChannelId] : []}
+        onConfirm={(ids) => setValue('vcChannelId', ids[0] || '', { shouldDirty: true })}
+        placeholder="Search voice channels"
       />
     </div>
   );

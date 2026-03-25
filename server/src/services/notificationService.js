@@ -54,6 +54,16 @@ class NotificationService {
     this.emitToUser(String(userId), 'NOTIFICATIONS_UPDATED', {});
   }
 
+  async dismiss(notificationId, userId) {
+    await this.appStoreService.deleteNotification(notificationId, userId);
+    this.emitToUser(String(userId), 'NOTIFICATIONS_UPDATED', {});
+  }
+
+  async dismissAll(userId) {
+    await this.appStoreService.clearNotifications(userId);
+    this.emitToUser(String(userId), 'NOTIFICATIONS_UPDATED', {});
+  }
+
   async notifyEscalation(actor, title, message, meta = {}) {
     const recipients = await this.roleService.getEscalationRecipients(actor.primary_role);
     const filtered = recipients.filter((userId) => String(userId) !== String(actor.id));

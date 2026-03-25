@@ -36,7 +36,10 @@ def get_log_settings():
 def get_activity_config():
     data = load_data()
     c = data.get("__activity_config__", {})
-    return {"afk_channel_id": c.get("afk_channel_id")}
+    return {
+        "afk_channel_id": c.get("afk_channel_id"),
+        "afk_channel_ids": c.get("afk_channel_ids", []),
+    }
 
 
 def get_discord_logs_v2():
