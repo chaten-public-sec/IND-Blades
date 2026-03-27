@@ -17,6 +17,7 @@ const { createSocketAuthMiddleware } = require('./middlewares/socketAuth');
 const { createAuthController } = require('./controllers/authController');
 const { createSystemController } = require('./controllers/systemController');
 const { createDashboardController } = require('./controllers/dashboardController');
+const { createBotChatController } = require('./controllers/botChatController');
 const { createLegacyController } = require('./controllers/legacyController');
 const { createManagementController } = require('./controllers/managementController');
 const { createStrikesController } = require('./controllers/strikesController');
@@ -120,6 +121,12 @@ async function createApplication() {
     botState,
     logService
   });
+  const botChatController = createBotChatController({
+    discordService,
+    commandQueueService,
+    logService,
+    emitSystemUpdate
+  });
   const legacyController = createLegacyController({
     legacyStoreService,
     logService,
@@ -165,6 +172,7 @@ async function createApplication() {
     authController,
     systemController,
     dashboardController,
+    botChatController,
     legacyController,
     managementController,
     strikesController

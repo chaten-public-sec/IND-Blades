@@ -10,6 +10,16 @@ from discord.ext import commands, tasks
 from utils.storage import get_log_settings, load_data, save_data
 
 COMMANDS_PATH = os.path.join("data", "commands.json")
+SUPPORTED_COMMAND_TYPES = {
+    "strike_added",
+    "strike_removed",
+    "strike_sync",
+    "event_created",
+    "event_updated",
+    "event_deleted",
+    "event_paused",
+    "event_resumed",
+}
 
 DEFAULT_MODERATION_LOGS_CHANNEL_ID = int(os.getenv("MODERATION_LOGS_CHANNEL_ID", "0") or 0)
 TARGET_GUILD_ID = int(os.getenv("GUILD_ID", "0") or 0)
@@ -269,6 +279,9 @@ class Moderation(commands.Cog):
         
         # Recover stale or retryable commands before claiming new work.
         for cmd in commands_list:
+            if cmd.get("type") not in SUPPORTED_COMMAND_TYPES:
+                continue
+
             status = cmd.get("status")
             attempts = int(cmd.get("attempts", 0) or 0)
             max_attempts = int(cmd.get("max_attempts", 5) or 5)
@@ -303,6 +316,8 @@ class Moderation(commands.Cog):
         
         # Process processing commands
         for cmd in commands_list:
+            if cmd.get("type") not in SUPPORTED_COMMAND_TYPES:
+                continue
             if cmd.get("status") != "processing":
                 continue
             

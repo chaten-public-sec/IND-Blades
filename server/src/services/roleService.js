@@ -35,7 +35,7 @@ class RoleService {
     }
 
     await this.appStoreService.updateSettings({
-      super_admin_ids: [targetId]
+      super_admin_ids: [String(discordId)]
     });
   }
 

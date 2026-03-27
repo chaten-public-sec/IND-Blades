@@ -8,6 +8,7 @@ function createApiRouter({
   authController,
   systemController,
   dashboardController,
+  botChatController,
   legacyController,
   managementController,
   strikesController
@@ -45,6 +46,8 @@ function createApiRouter({
   router.get('/management/roles', requirePermission(PERMISSIONS.MANAGE_WEB_ROLES, roleService), managementController.listAssignments);
   router.post('/management/roles/assign', requirePermission(PERMISSIONS.MANAGE_WEB_ROLES, roleService), managementController.assignRole);
   router.post('/management/roles/clear', requirePermission(PERMISSIONS.MANAGE_WEB_ROLES, roleService), managementController.clearRole);
+  router.get('/bot-chat/messages', requirePermission(PERMISSIONS.MANAGE_BOT_CHAT, roleService), botChatController.listMessages);
+  router.post('/bot-chat/send', requirePermission(PERMISSIONS.MANAGE_BOT_CHAT, roleService), botChatController.queueMessage);
 
   router.get('/events', requirePermission(PERMISSIONS.VIEW_EVENTS, roleService), legacyController.getEvents);
   router.post('/events/create', requirePermission(PERMISSIONS.CREATE_EVENTS, roleService), legacyController.createEvent);

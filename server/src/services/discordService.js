@@ -108,6 +108,36 @@ class DiscordService {
     return response.json();
   }
 
+  async fetchBotJson(path, options = {}) {
+    if (!this.hasBotCredentials()) {
+      throw new Error('Discord bot credentials are not configured.');
+    }
+
+    const normalizedPath = String(path || '').startsWith('/')
+      ? String(path || '')
+      : `/${String(path || '')}`;
+    const headers = {
+      Authorization: `Bot ${this.token}`,
+      ...(options.headers || {})
+    };
+
+    if (options.body && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    const response = await fetch(`https://discord.com/api/v10${normalizedPath}`, {
+      method: options.method || 'GET',
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+
+    if (!response.ok) {
+      throw new Error(`Discord API returned ${response.status}`);
+    }
+
+    return response.json();
+  }
+
   async fetchGuildMember(userId) {
     if (!this.hasBotCredentials()) {
       return null;
@@ -221,6 +251,68 @@ class DiscordService {
     }
 
     return members;
+  }
+
+  normalizeMessageAuthor(author, member) {
+    const user = author && typeof author === 'object' ? author : {};
+    const guildMember = member && typeof member === 'object' ? member : {};
+
+    return {
+      id: String(user.id || ''),
+      username: user.username || null,
+      display_name: guildMember.nick || user.global_name || user.username || 'Discord User',
+      avatar_url: this.resolveAvatarUrl(user),
+      bot: Boolean(user.bot)
+    };
+  }
+
+  normalizeChannelMessage(message) {
+    const entry = message && typeof message === 'object' ? message : {};
+    const author = this.normalizeMessageAuthor(entry.author, entry.member);
+    const referenced = entry.referenced_message && typeof entry.referenced_message === 'object'
+      ? {
+          id: String(entry.referenced_message.id || ''),
+          content: String(entry.referenced_message.content || ''),
+          author: this.normalizeMessageAuthor(entry.referenced_message.author, entry.referenced_message.member)
+        }
+      : null;
+
+    return {
+      id: String(entry.id || ''),
+      channel_id: String(entry.channel_id || ''),
+      content: String(entry.content || ''),
+      timestamp: entry.timestamp || null,
+      edited_timestamp: entry.edited_timestamp || null,
+      type: Number(entry.type || 0),
+      jump_url: entry.id && entry.channel_id && this.guildId
+        ? `https://discord.com/channels/${this.guildId}/${entry.channel_id}/${entry.id}`
+        : null,
+      author,
+      reply_to_message_id: parseSnowflake(entry.message_reference?.message_id),
+      referenced_message: referenced,
+      attachments: Array.isArray(entry.attachments)
+        ? entry.attachments.map((item) => ({
+            id: String(item.id || ''),
+            filename: String(item.filename || 'attachment'),
+            url: item.url || null,
+            content_type: item.content_type || null
+          }))
+        : []
+    };
+  }
+
+  async fetchChannelMessages(channelId, { limit = 30 } = {}) {
+    const normalizedChannelId = parseSnowflake(channelId);
+    if (!normalizedChannelId) {
+      return [];
+    }
+
+    const safeLimit = Math.min(50, Math.max(1, Number(limit || 30)));
+    const messages = await this.fetchBotJson(`/channels/${normalizedChannelId}/messages?limit=${safeLimit}`);
+
+    return Array.isArray(messages)
+      ? messages.map((message) => this.normalizeChannelMessage(message))
+      : [];
   }
 
   buildUsersFromActivity(activity) {

@@ -31,7 +31,8 @@ const PERMISSIONS = Object.freeze({
   RESET_ACTIVITY: 'reset_activity',
   CONFIGURE_FAM_ROLE: 'configure_fam_role',
   MANAGE_WEB_ROLES: 'manage_web_roles',
-  ELECT_LEADER: 'elect_leader'
+  ELECT_LEADER: 'elect_leader',
+  MANAGE_BOT_CHAT: 'manage_bot_chat'
 });
 
 const PERMISSIONS_BY_ROLE = Object.freeze({
