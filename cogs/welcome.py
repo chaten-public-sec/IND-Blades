@@ -7,6 +7,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from utils.storage import load_data, save_data
+from utils.system_identity import action_feedback, brand_embed
 
 WELCOME_CHANNEL_ID = int(os.getenv("WELCOME_CHANNEL_ID", "0") or 0)
 MEMBER_ROLE_ID = int(os.getenv("MEMBER_ROLE_ID", "0") or 0)
@@ -67,7 +68,7 @@ def generate_welcome_embed(member: discord.Member, override=None):
     embed = discord.Embed(
         title=str(config.get("title") or "Welcome to IND Blades"),
         description=(
-            f"{member.mention}\n\n"
+            f"{action_feedback('welcome')}, {member.mention}.\n\n"
             f"{str(config.get('message') or '').strip()}\n\n"
             f"**Member #{member_count}** • IND Blades"
         ),
@@ -78,9 +79,7 @@ def generate_welcome_embed(member: discord.Member, override=None):
     media_url = str(config.get("gif_url") or config.get("image_url") or "").strip()
     if media_url:
         embed.set_image(url=media_url)
-    embed.set_footer(text="IND Blades", icon_url=member.guild.icon.url if member.guild.icon else None)
-    embed.timestamp = discord.utils.utcnow()
-    return embed
+    return brand_embed(embed, member.guild, "Welcome Node")
 
 
 class WelcomeChannelDropdown(discord.ui.ChannelSelect):
@@ -152,9 +151,7 @@ class WelcomePanel(discord.ui.View):
         embed.add_field(name="Status", value="On" if config.get("enabled", True) else "Off", inline=True)
         embed.add_field(name="Channel", value=channel.mention if channel else "Not set", inline=True)
         embed.add_field(name="Title", value=str(config.get("title") or "Welcome to IND Blades")[:256], inline=False)
-        embed.set_footer(text="IND Blades")
-        embed.timestamp = discord.utils.utcnow()
-        return embed
+        return brand_embed(embed, guild, "Welcome Panel")
 
     async def update_state(self, interaction: discord.Interaction, enabled: bool):
         config = get_welcome_config()

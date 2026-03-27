@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 from utils.storage import load_data
+from utils.system_identity import action_feedback, brand_embed, build_progress_bar, relative_timestamp
 
 
 class Notifications(commands.Cog):
@@ -43,29 +44,29 @@ class Notifications(commands.Cog):
         proof_links = details.get("proof_links") or []
         witness_text = str(details.get("witness_text") or "").strip()
 
-        embed = discord.Embed(title="Strike Issued", color=0xED4245)
+        embed = discord.Embed(title=action_feedback("danger"), color=0xED4245)
         embed.description = (
-            "You have received a strike in IND Blades.\n"
-            "Please review the details below."
+            "A disciplinary node has been applied in IND Blades.\n"
+            "Review the system details below."
         )
         embed.add_field(name="Reason", value=reason[:1024], inline=False)
         embed.add_field(name="Given By", value=issued_by_name[:1024], inline=True)
         embed.add_field(name="Total Active Strikes", value=str(count), inline=True)
+        embed.add_field(name="System State", value=f"{build_progress_bar(min(count, 6), 6)} locked", inline=True)
 
         if issued_by_role:
             embed.add_field(name="Issuer Role", value=issued_by_role[:1024], inline=True)
         if violation_time:
-            embed.add_field(name="Violation Time", value=str(violation_time)[:1024], inline=False)
+            embed.add_field(name="Violation Time", value=relative_timestamp(violation_time, str(violation_time))[:1024], inline=False)
         if expires_at:
-            embed.add_field(name="Expiry", value=str(expires_at)[:1024], inline=False)
+            embed.add_field(name="Expiry", value=relative_timestamp(expires_at, str(expires_at))[:1024], inline=False)
         if witness_text:
             embed.add_field(name="Notes", value=witness_text[:1024], inline=False)
         if proof_links:
             formatted_links = "\n".join(str(link) for link in proof_links[:5])
             embed.add_field(name="Proof", value=formatted_links[:1024], inline=False)
 
-        embed.set_footer(text="IND Blades | Strike Notice")
-        embed.timestamp = discord.utils.utcnow()
+        brand_embed(embed, member.guild if getattr(member, "guild", None) else None, "Strike Notice")
 
         try:
             if member.dm_channel is None:
@@ -82,14 +83,14 @@ class Notifications(commands.Cog):
             return
 
         title_map = {
-            "removed": "Strike Removed",
-            "expired": "Strike Expired",
-            "history_cleared": "Strike History Cleared",
+            "removed": "Access restored",
+            "expired": "Timer elapsed",
+            "history_cleared": "Record stack purged",
         }
         description_map = {
-            "removed": "One of your strikes has been removed in IND Blades.",
-            "expired": "One of your strikes has expired in IND Blades.",
-            "history_cleared": "Your full strike history has been cleared in IND Blades.",
+            "removed": "One active strike node has been removed from your record.",
+            "expired": "One strike node expired automatically.",
+            "history_cleared": "Your stored strike history was fully cleared.",
         }
         color_map = {
             "removed": 0x57F287,
@@ -106,6 +107,7 @@ class Notifications(commands.Cog):
             color=color_map[action_type],
         )
         embed.add_field(name="Total Active Strikes", value=str(count), inline=True)
+        embed.add_field(name="System State", value=f"{build_progress_bar(min(count, 6), 6)} active", inline=True)
 
         if action_type == "removed":
             removed_by_name = str(details.get("removed_by_name") or "Management")
@@ -118,8 +120,7 @@ class Notifications(commands.Cog):
             embed.add_field(name="Updated By", value=cleared_by_name[:1024], inline=True)
             embed.add_field(name="Cleared Records", value=str(cleared_count), inline=True)
 
-        embed.set_footer(text="IND Blades | Strike Notice")
-        embed.timestamp = discord.utils.utcnow()
+        brand_embed(embed, member.guild if getattr(member, "guild", None) else None, "Strike Notice")
 
         try:
             if member.dm_channel is None:
@@ -133,48 +134,45 @@ class Notifications(commands.Cog):
         if action_type == "sync":
             return
 
-        title = "System Dispatch: Strike Update"
+        title = action_feedback("info")
         color = 0xED4245 if action_type == "added" else (0x57F287 if action_type in ("removed", "history_cleared") else 0x51A7FF)
         action_label = str(action_type or "updated").replace("_", " ").title()
 
         embed = discord.Embed(title=title, color=color)
-        embed.description = f"A strike action has been processed for **{member.name}**."
+        embed.description = f"A strike node changed state for **{member.name}**."
         embed.add_field(name="Target Member", value=member.mention, inline=True)
         embed.add_field(name="Action", value=action_label, inline=True)
         embed.add_field(name="Total Active Strikes", value=str(count), inline=True)
-        embed.set_footer(text="IND Blades | Smart System")
-        embed.timestamp = discord.utils.utcnow()
+        embed.add_field(name="Signal", value=f"{build_progress_bar(6, 6)} synced", inline=True)
+        brand_embed(embed, guild, "Smart System")
 
         await self.notify_users(guild, embed)
         await self.send_target_strike_update_dm(member, count, action_type, details or {})
 
     @commands.Cog.listener()
     async def on_event_state_change(self, guild, reminder, action_text, actor=None):
-        title = "System Dispatch: Event Log"
+        title = action_feedback("info")
         embed = discord.Embed(title=title, color=0x34D399)
 
-        embed.description = f"**{action_text}**"
+        embed.description = f"Event node update: **{action_text}**"
         embed.add_field(name="Event Name", value=reminder.get("desc", "Untitled"), inline=False)
         embed.add_field(name="Time (IST)", value=reminder.get("time", "Not set"), inline=True)
         embed.add_field(name="Author", value=actor.mention if actor else "System", inline=True)
-
-        embed.set_footer(text="IND Blades | Smart System")
-        embed.timestamp = discord.utils.utcnow()
+        embed.add_field(name="Signal", value=f"{build_progress_bar(6, 6)} routed", inline=True)
+        brand_embed(embed, guild, "Smart System")
 
         await self.notify_users(guild, embed)
 
     @commands.Cog.listener()
     async def on_event_channel_change(self, guild, reminder, old_id, new_id, actor):
-        title = "System Dispatch: Routing Update"
+        title = "Route node remapped"
         embed = discord.Embed(title=title, color=0xFBBF24)
 
         embed.description = f"Target routing updated for **{reminder.get('desc', 'Untitled')}**."
         embed.add_field(name="Original Channel", value=f"<#{old_id}>", inline=True)
         embed.add_field(name="Target Channel", value=f"<#{new_id}>", inline=True)
         embed.add_field(name="Author", value=actor.mention, inline=True)
-
-        embed.set_footer(text="IND Blades | Smart System")
-        embed.timestamp = discord.utils.utcnow()
+        brand_embed(embed, guild, "Smart System")
 
         await self.notify_users(guild, embed)
 

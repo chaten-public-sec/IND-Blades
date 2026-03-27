@@ -1,4 +1,5 @@
 const { WEBSITE_ROLES, ROLE_LABELS } = require('../constants/roles');
+const { serializeBotState } = require('./systemController');
 
 function enrichUsersWithWebsiteRoles(users, settings, managedUsers, superAdminIds, roleService) {
   const managedMap = new Map(managedUsers.map((item) => [String(item.discord_id), item.assigned_role]));
@@ -53,11 +54,13 @@ function createDashboardController({
       const visibleStrikeRequests = req.viewer.permissions.includes('review_strikes')
         ? strikeRequests
         : strikeRequests.filter((item) => String(item.requester_user_id) === String(req.viewer.id));
+      const currentBotState = serializeBotState(botState);
 
       res.json({
         viewer: req.viewer,
         health: legacyStoreService.getHealth(),
-        bot_status: botState.connected ? 'connected' : 'disconnected',
+        bot_status: currentBotState.connected ? 'connected' : 'disconnected',
+        bot_state: currentBotState,
         storage_mode: appStoreService.getStorageMode(),
         events: legacyStoreService.listEvents(store),
         welcome: legacyStoreService.getWelcomeConfig(store),

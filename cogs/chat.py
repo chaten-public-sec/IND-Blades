@@ -6,12 +6,9 @@ from datetime import timedelta
 import discord
 from discord.ext import commands, tasks
 
-from utils.desi_chat import DesiChatBrain
-
 COMMANDS_PATH = os.path.join("data", "commands.json")
 SUPPORTED_CHAT_COMMAND_TYPES = {"bot_chat_send"}
-ALLOWED_MENTIONS = discord.AllowedMentions(everyone=False, roles=False, users=True, replied_user=False)
-SAFE_REPLY_MENTIONS = discord.AllowedMentions.none()
+ALLOWED_MENTIONS = discord.AllowedMentions(everyone=False, roles=True, users=True, replied_user=False)
 
 
 def load_commands():
@@ -70,7 +67,6 @@ def mark_command_failed(command, error):
 class Chat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.brain = DesiChatBrain()
         self.command_worker.start()
 
     def cog_unload(self):
@@ -181,31 +177,6 @@ class Chat(commands.Cog):
     @command_worker.before_loop
     async def before_command_worker(self):
         await self.bot.wait_until_ready()
-
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
-        if message.author.bot:
-            return
-
-        if not self.brain.should_engage(message, self.bot.user):
-            return
-
-        plan = self.brain.build_plan(message, self.bot.user.id if self.bot.user else None)
-
-        async with message.channel.typing():
-            await asyncio.sleep(plan.typing_delay)
-
-        try:
-            if plan.reaction:
-                await message.add_reaction(plan.reaction)
-        except Exception:
-            pass
-
-        await message.reply(
-            plan.response,
-            mention_author=False,
-            allowed_mentions=SAFE_REPLY_MENTIONS,
-        )
 
 async def setup(bot):
     await bot.add_cog(Chat(bot))

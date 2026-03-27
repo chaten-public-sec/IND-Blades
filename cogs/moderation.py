@@ -8,6 +8,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from utils.storage import get_log_settings, load_data, save_data
+from utils.system_identity import action_feedback, brand_embed, build_progress_bar
 
 COMMANDS_PATH = os.path.join("data", "commands.json")
 SUPPORTED_COMMAND_TYPES = {
@@ -190,7 +191,7 @@ class Moderation(commands.Cog):
         return guild.get_channel(int(channel_id))
 
     def mod_log_embed(self, action, moderator, target, reason=None, duration=None, strikes=None):
-        embed = discord.Embed(title="Moderation Action", color=0xED4245)
+        embed = discord.Embed(title=action_feedback("danger"), color=0xED4245)
         embed.add_field(name="Action", value=action, inline=False)
         embed.add_field(name="Moderator", value=moderator.mention if hasattr(moderator, 'mention') else str(moderator), inline=True)
         embed.add_field(name="Target", value=target.mention if hasattr(target, 'mention') else str(target), inline=True)
@@ -198,8 +199,8 @@ class Moderation(commands.Cog):
             embed.add_field(name="Duration", value=duration, inline=False)
         if strikes is not None:
             embed.add_field(name="Strikes", value=str(strikes), inline=True)
+            embed.add_field(name="System State", value=f"{build_progress_bar(min(int(strikes or 0), 6), 6)} synced", inline=True)
         embed.add_field(name="Reason", value=reason or "No reason provided", inline=False)
-        embed.timestamp = discord.utils.utcnow()
         return embed
 
     def strike_embed(self, user, reason, strikes):
@@ -214,6 +215,7 @@ class Moderation(commands.Cog):
     async def send_mod_log(self, guild, embed):
         channel = self.resolve_log_channel(guild)
         if channel:
+            brand_embed(embed, guild, "Moderation")
             await channel.send(embed=embed)
 
     # Auto-strike on event absence REMOVED per requirement: Admin manually assigns strike only
@@ -646,7 +648,7 @@ class Moderation(commands.Cog):
             return
 
         await member.kick(reason=reason)
-        await interaction.response.send_message(f"{member} has been kicked.")
+        await interaction.response.send_message(f"Override complete. {member.mention} has been removed.")
         await self.send_mod_log(interaction.guild, self.mod_log_embed("Kick", interaction.user, member, reason))
 
     @app_commands.command(name="ban", description="Ban a member")
@@ -658,7 +660,7 @@ class Moderation(commands.Cog):
             return
 
         await member.ban(reason=reason)
-        await interaction.response.send_message(f"{member} has been banned.")
+        await interaction.response.send_message(f"System override applied. {member.mention} has been banned.")
         await self.send_mod_log(interaction.guild, self.mod_log_embed("Ban", interaction.user, member, reason))
 
     async def banned_users_autocomplete(self, interaction: discord.Interaction, current: str):
@@ -689,7 +691,7 @@ class Moderation(commands.Cog):
             await interaction.response.send_message("User not found or not banned.", ephemeral=True)
             return
 
-        await interaction.response.send_message(f"{user_obj} has been unbanned.")
+        await interaction.response.send_message(f"Access restored. {user_obj.mention} has been unbanned.")
         await self.send_mod_log(interaction.guild, self.mod_log_embed("Unban", interaction.user, user_obj, reason))
 
     @app_commands.command(name="timeout", description="Timeout a member")
@@ -702,7 +704,7 @@ class Moderation(commands.Cog):
 
         until = discord.utils.utcnow() + timedelta(minutes=minutes)
         await member.edit(timed_out_until=until, reason=reason)
-        await interaction.response.send_message(f"{member} timed out for {minutes} minutes.")
+        await interaction.response.send_message(f"Node locked. {member.mention} timed out for {minutes} minute(s).")
         await self.send_mod_log(
             interaction.guild,
             self.mod_log_embed("Timeout", interaction.user, member, reason, f"{minutes} minutes"),
@@ -714,7 +716,7 @@ class Moderation(commands.Cog):
             return
 
         await member.edit(timed_out_until=None, reason=reason)
-        await interaction.response.send_message(f"Timeout removed for {member}.")
+        await interaction.response.send_message(f"Control signal updated. Timeout removed for {member.mention}.")
         await self.send_mod_log(interaction.guild, self.mod_log_embed("Untimeout", interaction.user, member, reason))
 
     @app_commands.command(name="purge", description="Delete messages")
@@ -727,7 +729,7 @@ class Moderation(commands.Cog):
 
         await interaction.response.defer(ephemeral=True)
         deleted = await interaction.channel.purge(limit=amount)
-        await interaction.followup.send(f"Deleted {len(deleted)} messages.", ephemeral=True)
+        await interaction.followup.send(f"Override complete. Cleared {len(deleted)} message(s).", ephemeral=True)
         await self.send_mod_log(
             interaction.guild,
             self.mod_log_embed("Purge", interaction.user, interaction.channel.mention, f"{len(deleted)} messages deleted"),

@@ -92,18 +92,17 @@ async function createApplication() {
   const botState = {
     connected: false,
     lastHeartbeatAt: null,
+    runtime: {},
     emit: null
   };
 
   let lastManualEmit = 0;
   const emitSystemUpdate = (type, payload = {}) => {
     lastManualEmit = Date.now();
-    io.emit('systemUpdate', { type, payload });
-    if (type.startsWith('EVENT_')) {
+    const eventType = type === 'BOT_STATUS_UPDATED' ? 'BOT_STATUS' : type;
+    io.emit('systemUpdate', { type: eventType, payload });
+    if (eventType.startsWith('EVENT_')) {
       io.emit('eventsUpdated');
-    }
-    if (type === 'BOT_STATUS_UPDATED') {
-      io.emit('systemUpdate', { type: 'BOT_STATUS', payload });
     }
   };
   botState.emit = emitSystemUpdate;

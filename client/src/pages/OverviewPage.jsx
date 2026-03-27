@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Activity, ArrowRight, Bell, CalendarDays, ShieldAlert, Trophy, Users2 } from 'lucide-react';
+import { Activity, ArrowRight, Bell, Bot, CalendarDays, ShieldAlert, Trophy, Users2 } from 'lucide-react';
 import { useDashboardContext } from '../lib/DashboardContext';
 import { hasPermission } from '../lib/access';
 import { formatDate, formatDuration, formatShortDate, initials } from '../lib/format';
@@ -34,6 +34,7 @@ function StatCard({ icon: Icon, label, value, tone = 'default', note }) {
 
 export default function OverviewPage() {
   const dashboard = useDashboardContext();
+  const botBrainVisible = hasPermission(dashboard.viewer, 'manage_bot_chat');
   const topLeaders = dashboard.leaderboard.slice(0, 5);
   const latestEvents = dashboard.events.slice(0, 3);
   const recentNotifications = dashboard.notificationCenter.slice(0, 3);
@@ -44,6 +45,9 @@ export default function OverviewPage() {
   );
   const weeklyScore = Math.round((Number(dashboard.myProfile?.voice_time || 0) / 60) * 2 + Number(dashboard.myProfile?.messages || 0));
   const myRank = Math.max(dashboard.leaderboard.findIndex((item) => String(item.id) === String(dashboard.viewer.id)) + 1, 1);
+  const botModeLabel = String(dashboard.botState?.presence_mode || 'idle')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 
   const quickActions = [
     { label: 'Activity', path: '/dashboard/activity', icon: Activity, show: hasPermission(dashboard.viewer, 'view_activity') },
@@ -136,6 +140,64 @@ export default function OverviewPage() {
           </CardContent>
         </Card>
       </div>
+
+      {botBrainVisible ? (
+        <Card className="surface-highlight">
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Bot Brain</CardTitle>
+                <CardDescription>Live runtime state from the super-admin bot system.</CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant={dashboard.botStatus === 'connected' ? 'success' : 'danger'}>
+                  {dashboard.botStatus === 'connected' ? 'Live Node' : 'Node Offline'}
+                </Badge>
+                <Badge variant="neutral">{botModeLabel}</Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-[24px] border border-[var(--border)] bg-[var(--bg-soft)] p-5">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[var(--primary-soft)] text-[var(--primary)]">
+                  <Bot className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Current Presence</p>
+                  <p className="mt-2 text-xl font-semibold text-[var(--text-main)]">
+                    {dashboard.botState?.current_presence_text || 'Observing silently'}
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">
+                    {dashboard.botState?.profile_line || 'Runtime profile is waiting for the next heartbeat.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+              <div className="surface-soft rounded-[22px] p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Reply Tone</p>
+                <p className="mt-3 text-lg font-semibold text-[var(--text-main)]">
+                  {String(dashboard.botState?.reply_tone || 'friendly').replace(/\b\w/g, (character) => character.toUpperCase())}
+                </p>
+              </div>
+              <div className="surface-soft rounded-[22px] p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Traffic</p>
+                <p className="mt-3 text-lg font-semibold text-[var(--text-main)]">{dashboard.botState?.message_rate || 0} msgs/min</p>
+              </div>
+              <div className="surface-soft rounded-[22px] p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Active Events</p>
+                <p className="mt-3 text-lg font-semibold text-[var(--text-main)]">{dashboard.botState?.active_events || 0}</p>
+              </div>
+              <div className="surface-soft rounded-[22px] p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Active Strikes</p>
+                <p className="mt-3 text-lg font-semibold text-[var(--text-main)]">{dashboard.botState?.active_strikes || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <Card>

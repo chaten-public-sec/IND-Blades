@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 
 from utils.storage import get_discord_logs_v2, get_log_settings
+from utils.system_identity import brand_embed
 
 DEFAULT_EVENT_CHANNEL_ID = int(os.getenv("LOGS_CHANNEL_ID", "0") or 0)
 DEFAULT_MODERATION_CHANNEL_ID = int(os.getenv("MODERATION_LOGS_CHANNEL_ID", "0") or 0)
@@ -100,8 +101,7 @@ class Logs(commands.Cog):
         if not channels:
             return
 
-        embed.set_footer(text="IND Blades", icon_url=guild.icon.url if guild.icon else None)
-        embed.timestamp = discord.utils.utcnow()
+        brand_embed(embed, guild, "Telemetry")
         for channel in channels:
             try:
                 await channel.send(embed=embed)

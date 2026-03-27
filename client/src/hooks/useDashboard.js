@@ -23,6 +23,24 @@ const EMPTY_BOOTSTRAP = {
   storage_mode: 'file',
   health: {},
   bot_status: 'disconnected',
+  bot_state: {
+    connected: false,
+    presence_mode: 'idle',
+    reply_tone: 'friendly',
+    silent_mode: false,
+    identity_line: 'IND Blades Control System',
+    tagline: "I don't speak much. I act.",
+    profile_line: '',
+    current_presence_text: '',
+    current_presence_type: 'watching',
+    last_presence_at: null,
+    member_count: 0,
+    active_events: 0,
+    active_strikes: 0,
+    message_rate: 0,
+    uptime_seconds: 0,
+    last_heartbeat_at: null,
+  },
 };
 
 export function useDashboard() {
@@ -48,6 +66,7 @@ export function useDashboard() {
   const [storageMode, setStorageMode] = useState('file');
   const [health, setHealth] = useState({});
   const [botStatus, setBotStatus] = useState('disconnected');
+  const [botState, setBotState] = useState(EMPTY_BOOTSTRAP.bot_state);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [liveSync, setLiveSync] = useState(false);
@@ -78,7 +97,8 @@ export function useDashboard() {
     setManagement(data.management || { settings: {}, assignments: [] });
     setStorageMode(data.storage_mode || 'file');
     setHealth(data.health || {});
-    setBotStatus(data.bot_status || 'disconnected');
+    setBotStatus(data.bot_status || (data.bot_state?.connected ? 'connected' : 'disconnected'));
+    setBotState({ ...EMPTY_BOOTSTRAP.bot_state, ...(data.bot_state || {}) });
   };
 
   const handleError = (error, fallback) => {
@@ -151,6 +171,12 @@ export function useDashboard() {
               setNotificationCenter(Array.isArray(response.data) ? response.data : []);
             }
           } catch {}
+          return;
+        }
+        if (event?.type === 'BOT_STATUS' || event?.type === 'BOT_STATUS_UPDATED') {
+          const nextBotState = { ...EMPTY_BOOTSTRAP.bot_state, ...(event.payload || {}) };
+          setBotState(nextBotState);
+          setBotStatus(nextBotState.connected ? 'connected' : 'disconnected');
           return;
         }
         await loadDashboard(true);
@@ -269,6 +295,7 @@ export function useDashboard() {
     storageMode,
     health,
     botStatus,
+    botState,
     loading,
     errorMessage,
     liveSync,

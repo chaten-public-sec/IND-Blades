@@ -270,6 +270,11 @@ export default function DashboardLayout() {
                       {dashboard.botStatus === 'connected' ? 'Online' : 'Offline'}
                     </span>
                   </div>
+                  {hasPermission(dashboard.viewer, 'manage_bot_chat') ? (
+                    <p className="mt-3 text-xs leading-6 text-[var(--text-muted)]">
+                      {dashboard.botState?.current_presence_text || 'Bot brain waiting for status sync.'}
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <div className="mb-5 flex justify-center">

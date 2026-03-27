@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  AtSign,
   Bot,
   Crown,
   Hash,
@@ -8,6 +9,7 @@ import {
   Reply,
   Send,
   Sparkles,
+  Shield,
   WandSparkles,
   X,
 } from 'lucide-react';
@@ -140,6 +142,8 @@ export default function BotMastiPanel() {
   );
 
   const [channelPickerOpen, setChannelPickerOpen] = useState(false);
+  const [userPickerOpen, setUserPickerOpen] = useState(false);
+  const [rolePickerOpen, setRolePickerOpen] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState('');
   const [messages, setMessages] = useState([]);
   const [composer, setComposer] = useState('');
@@ -236,6 +240,27 @@ export default function BotMastiPanel() {
     label: channel.name,
     description: channel.type === 5 ? 'Announcement channel' : `Text channel ${channel.id}`,
   }));
+  const mentionUserItems = dashboard.users.map((user) => ({
+    id: user.id,
+    label: user.name,
+    description: user.username ? `@${user.username}` : `User ID ${user.id}`,
+  }));
+  const mentionRoleItems = dashboard.roles.map((role) => ({
+    id: role.id,
+    label: role.name,
+    description: `Role ID ${role.id}`,
+  }));
+
+  const insertComposerText = (snippet) => {
+    setComposer((current) => {
+      const draft = String(current || '');
+      if (!draft.trim()) {
+        return `${snippet} `;
+      }
+      const separator = draft.endsWith(' ') || draft.endsWith('\n') ? '' : ' ';
+      return `${draft}${separator}${snippet} `;
+    });
+  };
 
   const queueBotMessage = async () => {
     const content = composer.trim();
@@ -412,6 +437,28 @@ export default function BotMastiPanel() {
               ))}
             </div>
 
+            <div className="mt-4 rounded-[22px] border border-white/8 bg-black/10 px-4 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-300/72">Mention Tools</p>
+                  <p className="mt-2 text-sm text-slate-200/76">
+                    Insert direct user and role mentions like a proper ops console.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => setUserPickerOpen(true)}>
+                    <AtSign className="h-4 w-4" />
+                    Mention User
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => setRolePickerOpen(true)}>
+                    <Shield className="h-4 w-4" />
+                    Mention Role
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             <div className="mt-5 space-y-2">
               <label className="text-xs font-black uppercase tracking-[0.24em] text-slate-300/72">Bot Message</label>
               <textarea
@@ -459,6 +506,36 @@ export default function BotMastiPanel() {
           setReplyTarget(null);
         }}
         placeholder="Search channels"
+      />
+
+      <SearchPickerDialog
+        open={userPickerOpen}
+        onOpenChange={setUserPickerOpen}
+        title="Mention User"
+        description="Choose a member and insert their Discord mention into the bot message."
+        items={mentionUserItems}
+        selectedIds={[]}
+        onConfirm={(ids) => {
+          if (ids[0]) {
+            insertComposerText(`<@${ids[0]}>`);
+          }
+        }}
+        placeholder="Search members"
+      />
+
+      <SearchPickerDialog
+        open={rolePickerOpen}
+        onOpenChange={setRolePickerOpen}
+        title="Mention Role"
+        description="Choose a Discord role and insert the role mention into the bot message."
+        items={mentionRoleItems}
+        selectedIds={[]}
+        onConfirm={(ids) => {
+          if (ids[0]) {
+            insertComposerText(`<@&${ids[0]}>`);
+          }
+        }}
+        placeholder="Search roles"
       />
     </Card>
   );
