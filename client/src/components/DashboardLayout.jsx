@@ -3,6 +3,7 @@ import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-d
 import {
   Activity,
   Bell,
+  Bot,
   CalendarDays,
   ChevronLeft,
   FileClock,
@@ -60,6 +61,12 @@ function buildNavigation(viewer) {
       label: 'Settings',
       icon: Settings2,
       show: hasPermission(viewer, 'view_autorole') || hasPermission(viewer, 'configure_fam_role'),
+    },
+    {
+      path: '/dashboard/bot-chat',
+      label: 'Bot Chat',
+      icon: Bot,
+      show: hasPermission(viewer, 'manage_bot_chat'),
     },
   ].filter((item) => item.show);
 

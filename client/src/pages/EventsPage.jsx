@@ -10,7 +10,6 @@ import { hasPermission } from '../lib/access';
 import { formatDate } from '../lib/format';
 import SectionHeader from '../components/SectionHeader';
 import SearchPickerDialog from '../components/SearchPickerDialog';
-import BotMastiPanel from '../components/BotMastiPanel';
 import { SelectField } from '../components/ui/select';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
@@ -338,8 +337,6 @@ export default function EventsPage() {
           )}
         </div>
       </div>
-
-      <BotMastiPanel />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="w-[min(96vw,600px)] rounded-md border-gray-200 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">

@@ -14,6 +14,7 @@ import LogsPage from './pages/LogsPage';
 import DiscordLogsPage from './pages/DiscordLogsPage';
 import AutoRolePage from './pages/AutoRolePage';
 import UsersPage from './pages/UsersPage';
+import BotChatPage from './pages/BotChatPage';
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
             <Route path="discord-logs" element={<DiscordLogsPage />} />
             <Route path="autorole" element={<AutoRolePage />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="bot-chat" element={<BotChatPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
